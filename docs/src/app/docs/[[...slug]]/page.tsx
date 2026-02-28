@@ -16,6 +16,10 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const MDX = page.data.body;
   const markdownUrl = `/llms.mdx/docs/${[...page.slugs, 'index.mdx'].join('/')}`;
 
+  const text = (await page.data.getText?.('processed')) || '';
+  const wordCount = text.replace(/\s/g, '').length;
+  const readingTime = Math.max(1, Math.ceil(wordCount / 300));
+
   return (
     <DocsPage
       toc={page.data.toc}
@@ -23,7 +27,11 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
     >
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
-      <div className="flex flex-row gap-2 items-center border-b pb-6">
+      <div className="flex flex-row gap-4 items-center text-sm text-muted-foreground mt-2">
+        {wordCount > 0 && <span>约 {wordCount} 字</span>}
+        {wordCount > 0 && <span>阅读时间 {readingTime} 分钟</span>}
+      </div>
+      <div className="flex flex-row gap-2 items-center border-b pb-6 mt-4">
         <LLMCopyButton markdownUrl={markdownUrl} />
         <ViewOptions
           markdownUrl={markdownUrl}
@@ -38,8 +46,13 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
           })}
         />
       </DocsBody>
+      {!!page.data.lastModified && (
+        <div className="mt-12 text-sm text-muted-foreground border-b pb-4">
+          最后修改时间：{new Date(page.data.lastModified as string | number | Date).toLocaleDateString('zh-CN')}
+        </div>
+      )}
       <Comments />
-      <div className="mt-12 pt-6 border-t text-sm text-muted-foreground flex flex-col gap-1">
+      <div className="pt-6 text-sm text-muted-foreground flex flex-col gap-1">
         <p>
           ⚖️ 本书内容采用{' '}
           <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noreferrer" className="underline hover:text-foreground">
@@ -48,11 +61,6 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
           {' '}协议授权。包含的所有工程代码和示例采用 <strong>MIT</strong> 协议。
         </p>
         <p>遵循『谁编写，谁拥有』原则，贡献者对其原创部分享有主权。</p>
-        {!!page.data.lastModified && (
-          <p className="mt-2 text-xs">
-            最后修改时间：{new Date(page.data.lastModified as string | number | Date).toLocaleDateString('zh-CN')}
-          </p>
-        )}
       </div>
     </DocsPage>
   );

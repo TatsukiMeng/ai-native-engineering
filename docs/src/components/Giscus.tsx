@@ -1,8 +1,11 @@
 'use client';
 
 import Giscus from '@giscus/react';
+import { useTheme } from 'next-themes';
 
 export function Comments() {
+  const { resolvedTheme } = useTheme();
+
   return (
     <div className="mt-12 pt-6">
       <Giscus
@@ -16,7 +19,7 @@ export function Comments() {
         reactionsEnabled="1"
         emitMetadata="0"
         inputPosition="top"
-        theme="preferred_color_scheme"
+        theme={resolvedTheme === 'dark' ? 'transparent_dark' : 'light'}
         lang="zh-CN"
         loading="lazy"
       />
