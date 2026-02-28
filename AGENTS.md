@@ -51,3 +51,6 @@
      - `refactor:` 代码重构或章节结构大调整
      - `chore:` 构建过程或辅助工具相关的修改（如修改打包配置）
    - 示例：`docs: 新增《Agent Swarm》核心章节初稿` 或 `chore: 调整 Next.js 的导出配置为静态构建`。
+6. **Markdown / MDX 组件语法规范**
+   - 编写提示框 (Callouts) 时，**必须使用 Fumadocs 官方的 `:::` 容器块语法**，例如 `:::note`、`:::warning`。
+   - 严禁使用 GitHub 风格的 Markdown Alert 语法（例如 `> [!NOTE]`），因为当前环境下的 Fumadocs 并不支持该语法渲染。
