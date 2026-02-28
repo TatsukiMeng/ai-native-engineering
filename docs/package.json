@@ -14,13 +14,15 @@
   "dependencies": {
     "@giscus/react": "^3.1.0",
     "@orama/orama": "^3.1.18",
-    "fumadocs-core": "16.6.7",
+    "fumadocs-core": "^16.6.7",
     "fumadocs-mdx": "14.2.8",
     "fumadocs-ui": "16.6.7",
     "lucide-react": "^0.575.0",
+    "mermaid": "^11.12.3",
     "next": "16.1.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "remark-directive": "^4.0.0",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
