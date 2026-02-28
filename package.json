@@ -2,9 +2,13 @@
   "name": "ai-native-engineering",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "husky": "^9.1.7"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "scripts": {
+    "prepare": "husky"
   }
 }

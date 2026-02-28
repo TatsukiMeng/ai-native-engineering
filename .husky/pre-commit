@@ -1,0 +1,32 @@
+#!/bin/sh
+
+echo "Checking and formatting staged files..."
+
+# Get staged files in docs directory
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep 'docs/' | sed 's/^docs\///')
+
+if [ -z "$STAGED_FILES" ]; then
+  # No docs files to check
+  exit 0
+fi
+
+# Go to the docs directory where biome is installed
+cd docs || exit 1
+
+# Run Biome only on those files using the local dependency via bun
+bun biome check --write $STAGED_FILES
+
+# Check exit code
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
+  echo "Biome check failed. Please fix the errors before committing."
+  exit 1
+fi
+
+# Auto-stage auto-fixed files back into git
+for file in $STAGED_FILES; do
+  git add "$file"
+done
+
+echo "Biome check passed!"
+exit 0
