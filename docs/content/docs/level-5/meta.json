@@ -1,0 +1,6 @@
+{
+  "title": "第五篇：终局",
+  "description": "拥抱 Agent Swarm 与反脆弱设计",
+  "defaultOpen": true,
+  "pages": ["swarm-orchestration", "cost-governance"]
+}

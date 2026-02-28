@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import Giscus from '@giscus/react';
-import { useTheme } from 'next-themes';
+import Giscus from "@giscus/react";
+import { useTheme } from "next-themes";
 
 export function Comments() {
   const { resolvedTheme } = useTheme();
@@ -19,7 +19,7 @@ export function Comments() {
         reactionsEnabled="1"
         emitMetadata="0"
         inputPosition="top"
-        theme={resolvedTheme === 'dark' ? 'transparent_dark' : 'light'}
+        theme={resolvedTheme === "dark" ? "transparent_dark" : "light"}
         lang="zh-CN"
         loading="lazy"
       />

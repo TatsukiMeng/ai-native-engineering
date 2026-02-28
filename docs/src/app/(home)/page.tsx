@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from "next/link";
 
 export default function HomePage() {
   return (
@@ -7,7 +7,8 @@ export default function HomePage() {
         AI 原生工程
       </h1>
       <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10">
-        Vibe Coding 进阶与全域自动化落地。<br />
+        Vibe Coding 进阶与全域自动化落地。
+        <br />
         从“入门实战避坑”逐渐过渡到“高级全域自动化集群（Swarm）”的技术专著。
       </p>
       <div className="flex flex-row gap-4 justify-center">

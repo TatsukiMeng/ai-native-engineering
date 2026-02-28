@@ -1,0 +1,37 @@
+.anchor {
+  position: fixed;
+  top: calc(var(--nav-height) + 1rem);
+  left: max(
+    0.75rem,
+    calc(
+      ((100vw - var(--page-width)) / 2) +
+      var(--layout-inline-gutter) -
+      3rem -
+      0.75rem
+    )
+  );
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-radius: var(--radius-large);
+  overflow: hidden;
+  background-color: var(--color-float-panel-bg);
+  padding: 0.25rem;
+  box-shadow: var(--float-panel-shadow);
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.closed {
+  transform: translateY(-0.25rem);
+  opacity: 0;
+  pointer-events: none;
+}

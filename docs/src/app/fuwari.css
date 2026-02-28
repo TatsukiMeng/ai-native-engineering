@@ -1,0 +1,201 @@
+@import "fumadocs-ui/css/lib/default-colors.css";
+
+:root {
+  --hue: 250;
+  --radius-large: 1rem;
+  --content-delay: 150ms;
+  --panel-gap: 1rem;
+  --page-width: 75rem;
+  --sidebar-width: 17.5rem;
+  --nav-height: 4.5rem;
+  --toc-width: calc((100vw - var(--page-width)) / 2 - 1rem);
+  --layout-inline-gutter: 1rem;
+  --float-panel-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+:root {
+  --color-primary: oklch(0.7 0.14 var(--hue));
+  --color-page-bg: oklch(0.95 0.01 var(--hue));
+  --color-card-bg: white;
+  --color-btn-content: oklch(0.55 0.12 var(--hue));
+  --color-btn-regular-bg: oklch(0.95 0.025 var(--hue));
+  --color-btn-regular-bg-hover: oklch(0.9 0.05 var(--hue));
+  --color-btn-regular-bg-active: oklch(0.85 0.08 var(--hue));
+  --color-btn-plain-bg-hover: oklch(0.95 0.025 var(--hue));
+  --color-btn-plain-bg-active: oklch(0.98 0.01 var(--hue));
+  --color-line-divider: rgba(0, 0, 0, 0.08);
+  --color-meta-divider: rgba(0, 0, 0, 0.2);
+  --color-selection-bg: oklch(0.9 0.05 var(--hue));
+  --color-float-panel-bg: white;
+  --color-license-block-bg: rgba(0, 0, 0, 0.03);
+  --color-toc-badge-bg: oklch(0.9 0.045 var(--hue));
+  --color-toc-btn-hover: oklch(0.92 0.015 var(--hue));
+  --color-toc-btn-active: oklch(0.9 0.015 var(--hue));
+
+  --color-fd-background: var(--color-page-bg);
+  --color-fd-foreground: oklch(0.25 0.02 var(--hue));
+  --color-fd-card: var(--color-card-bg);
+  --color-fd-card-foreground: var(--color-fd-foreground);
+  --color-fd-primary: var(--color-primary);
+  --color-fd-primary-foreground: white;
+  --color-fd-muted: var(--color-btn-regular-bg);
+  --color-fd-muted-foreground: var(--color-btn-content);
+  --color-fd-border: var(--color-line-divider);
+}
+
+.dark {
+  --color-primary: oklch(0.75 0.14 var(--hue));
+  --color-page-bg: oklch(0.16 0.014 var(--hue));
+  --color-card-bg: oklch(0.23 0.015 var(--hue));
+  --color-btn-content: oklch(0.75 0.1 var(--hue));
+  --color-btn-regular-bg: oklch(0.33 0.035 var(--hue));
+  --color-btn-regular-bg-hover: oklch(0.38 0.04 var(--hue));
+  --color-btn-regular-bg-active: oklch(0.43 0.045 var(--hue));
+  --color-btn-plain-bg-hover: oklch(0.3 0.035 var(--hue));
+  --color-btn-plain-bg-active: oklch(0.27 0.025 var(--hue));
+  --color-line-divider: rgba(255, 255, 255, 0.08);
+  --color-meta-divider: rgba(255, 255, 255, 0.2);
+  --color-selection-bg: oklch(0.4 0.08 var(--hue));
+  --color-float-panel-bg: oklch(0.19 0.015 var(--hue));
+  --color-license-block-bg: oklch(0.17 0.015 var(--hue));
+  --color-toc-badge-bg: var(--color-btn-regular-bg);
+  --color-toc-btn-hover: oklch(0.22 0.02 var(--hue));
+  --color-toc-btn-active: oklch(0.25 0.02 var(--hue));
+  --float-panel-shadow: none;
+}
+
+@layer components {
+  .card-base {
+    border-radius: var(--radius-large);
+    overflow: hidden;
+    background-color: var(--color-card-bg);
+    border: 1px solid var(--color-line-divider);
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.005),
+      0 8px 28px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s ease;
+  }
+
+  .btn-plain {
+    transition: all 0.2s ease;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    color: rgb(0 0 0 / 75%);
+    border-radius: 0.5rem;
+  }
+
+  .dark .btn-plain {
+    color: rgb(255 255 255 / 75%);
+  }
+
+  .expand-animation {
+    z-index: 0;
+  }
+
+  .expand-animation::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    transform: scale(0.85);
+    transition: all 0.2s ease-out;
+  }
+
+  .expand-animation:hover::before {
+    transform: scale(1);
+    background-color: var(--color-btn-plain-bg-hover);
+  }
+
+  .expand-animation:active::before {
+    background-color: var(--color-btn-plain-bg-active);
+  }
+
+  .btn-plain:hover {
+    color: var(--color-primary);
+  }
+
+  .btn-plain:not(.scale-animation):hover {
+    background-color: var(--color-btn-plain-bg-hover);
+  }
+
+  .btn-plain:active {
+    color: var(--color-primary);
+  }
+
+  .btn-plain:not(.scale-animation):active {
+    background-color: var(--color-btn-plain-bg-active);
+  }
+
+  .btn-plain.scale-animation {
+    position: relative;
+    transform: scale(1);
+    z-index: 0;
+  }
+
+  .onload-animation {
+    opacity: 0;
+    animation: fade-in-up 300ms forwards;
+    animation-delay: var(--content-delay);
+  }
+
+  @keyframes fade-in-up {
+    0% {
+      opacity: 0;
+      transform: translateY(2rem);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+body {
+  background-color: var(--color-fd-background);
+}
+
+#main-grid {
+  grid-template-rows: auto;
+}
+
+#toc-inner-wrapper {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 2rem,
+    black calc(100% - 2rem),
+    transparent 100%
+  );
+}
+
+#fuwari-layout-root #nd-page {
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+
+@media (max-width: 1536px) {
+  :root {
+    --toc-width: 0rem;
+  }
+}
+
+::selection {
+  background-color: var(--color-selection-bg);
+}

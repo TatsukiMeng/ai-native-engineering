@@ -1,0 +1,6 @@
+{
+  "title": "第三篇：实战",
+  "description": "落地全栈 AI 工作流",
+  "defaultOpen": true,
+  "pages": ["backend-workflow", "frontend-workflow"]
+}

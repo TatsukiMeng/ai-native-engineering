@@ -1,0 +1,6 @@
+{
+  "title": "MCP 能力层",
+  "description": "协议、权限与工具接入",
+  "defaultOpen": true,
+  "pages": ["server-access"]
+}
