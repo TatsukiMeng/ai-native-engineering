@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LLMCopyButton, ViewOptions } from "@/components/ai/page-actions";
 import { Comments } from "@/components/Giscus";
+import { DocsPrevNextNav } from "@/components/layout/DocsPrevNextNav";
 import { LicenseCard } from "@/components/layout/LicenseCard";
 import { gitConfig } from "@/lib/layout.shared";
 import { getPageImage, source } from "@/lib/source";
@@ -27,12 +28,27 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const wordCount = text.replace(/\s/g, "").length;
   const readingTime = Math.max(1, Math.ceil(wordCount / 300));
 
+  const pages = source.getPages();
+  const currentIndex = pages.findIndex((item) => item.url === page.url);
+  const previousPage = currentIndex > 0 ? pages[currentIndex - 1] : undefined;
+  const nextPage =
+    currentIndex >= 0 && currentIndex < pages.length - 1
+      ? pages[currentIndex + 1]
+      : undefined;
+  const previousItem = previousPage
+    ? { url: previousPage.url, title: previousPage.data.title }
+    : undefined;
+  const nextItem = nextPage
+    ? { url: nextPage.url, title: nextPage.data.title }
+    : undefined;
+
   return (
     <DocsPage
       toc={page.data.toc}
       full={page.data.full}
       tableOfContentPopover={{ enabled: false }}
       tableOfContent={{ enabled: false }}
+      footer={{ enabled: false }}
       className="!mx-0 !w-full !max-w-none !gap-0 !px-0 !py-0"
     >
       <div className="relative">
@@ -97,6 +113,8 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 
           <Comments />
         </div>
+
+        <DocsPrevNextNav previous={previousItem} next={nextItem} />
       </div>
     </DocsPage>
   );
