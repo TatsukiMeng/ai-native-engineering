@@ -9,17 +9,22 @@ import { ThemeToggle } from "./ThemeToggle";
 
 type FloatingSidebarPanelProps = {
   collapsed: boolean;
+  hiddenByHover?: boolean;
 };
 
-export function FloatingSidebarPanel({ collapsed }: FloatingSidebarPanelProps) {
+export function FloatingSidebarPanel({
+  collapsed,
+  hiddenByHover = false,
+}: FloatingSidebarPanelProps) {
   const { setOpenSearch } = useSearchContext();
+  const panelVisible = collapsed && !hiddenByHover;
 
   return (
     <div
       className={`${styles.anchor} pointer-events-none z-60 hidden lg:block`}
     >
       <div
-        className={`${styles.panel} ${collapsed ? styles.open : styles.closed} pointer-events-auto`}
+        className={`${styles.panel} ${panelVisible ? styles.open : styles.closed} pointer-events-auto`}
       >
         <SidebarCollapseTrigger
           className={buttonStyles({

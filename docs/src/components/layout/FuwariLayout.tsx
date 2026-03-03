@@ -6,8 +6,10 @@ import {
 } from "fumadocs-ui/components/sidebar/base";
 import { TreeContextProvider } from "fumadocs-ui/contexts/tree";
 import type { DocsLayoutProps } from "fumadocs-ui/layouts/docs";
+import { useState } from "react";
 import { FloatingSidebarPanel } from "./FloatingSidebarPanel";
 import { Footer } from "./Footer";
+import { HoverRevealPanels } from "./HoverRevealPanels";
 import { Navbar } from "./Navbar";
 import { Sidebar } from "./Sidebar";
 import { TOCSidebar } from "./TOCSidebar";
@@ -19,11 +21,12 @@ function FuwariLayoutContent({
   githubUrl,
 }: Omit<DocsLayoutProps, "tree">) {
   const { collapsed } = useSidebar();
+  const [sidebarHoverOpen, setSidebarHoverOpen] = useState(false);
 
   return (
     <div
       id="fuwari-layout-root"
-      className="min-h-screen bg-fd-background pb-10 font-sans transition-colors duration-700"
+      className="relative min-h-screen bg-fd-background pb-10 font-sans transition-colors duration-700"
     >
       <div
         id="top-row"
@@ -62,7 +65,14 @@ function FuwariLayoutContent({
         </div>
       </div>
 
-      <FloatingSidebarPanel collapsed={collapsed} />
+      <FloatingSidebarPanel
+        collapsed={collapsed}
+        hiddenByHover={sidebarHoverOpen}
+      />
+      <HoverRevealPanels
+        sidebar={sidebar}
+        onSidebarHoverChange={setSidebarHoverOpen}
+      />
 
       <div className="absolute z-0 hidden w-full 2xl:block">
         <div className="relative mx-auto max-w-(--page-width) px-0 md:px-(--layout-inline-gutter)">

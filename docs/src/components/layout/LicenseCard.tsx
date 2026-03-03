@@ -51,7 +51,7 @@ export function LicenseCard({ title, updatedAt }: LicenseCardProps) {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-dashed border-fd-border bg-license-block-bg px-6 py-5 transition">
+    <div className="relative overflow-hidden rounded-xl border border-dashed border-fd-border bg-[var(--license-block-bg)] px-6 py-5 transition">
       <div className="font-bold text-black/75 transition dark:text-white/75">
         {title}
       </div>

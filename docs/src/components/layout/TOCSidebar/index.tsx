@@ -2,7 +2,19 @@
 
 import { useTOCSidebar } from "./useTOCSidebar";
 
-export function TOCSidebar() {
+type TOCContentProps = {
+  wrapperClassName: string;
+  innerClassName: string;
+  spacerClassName?: string;
+  mode: "fixed" | "floating";
+};
+
+function TOCContent({
+  wrapperClassName,
+  innerClassName,
+  spacerClassName = "h-8",
+  mode,
+}: TOCContentProps) {
   const {
     entries,
     activeUrls,
@@ -18,16 +30,17 @@ export function TOCSidebar() {
 
   return (
     <aside
-      id="toc-wrapper"
-      className="hidden lg:block transition absolute top-0 -right-[var(--toc-width)] w-[var(--toc-width)]"
+      id={mode === "fixed" ? "toc-wrapper" : undefined}
+      data-toc-mode={mode}
+      className={wrapperClassName}
     >
       <div
-        id="toc-inner-wrapper"
+        id={mode === "fixed" ? "toc-inner-wrapper" : undefined}
         ref={scrollRef}
-        className="fixed top-14 w-[var(--toc-width)] h-[calc(100vh_-_20rem)] overflow-y-scroll overflow-x-hidden hide-scrollbar"
+        className={innerClassName}
       >
         <nav id="toc" className="w-full transition" ref={listRef}>
-          <div className="h-8 w-full" />
+          <div className={`${spacerClassName} w-full`} />
           <div className="relative flex flex-col gap-1">
             {indicatorStyle && (
               <div
@@ -75,9 +88,31 @@ export function TOCSidebar() {
               );
             })}
           </div>
-          <div className="h-8 w-full" />
+          <div className={`${spacerClassName} w-full`} />
         </nav>
       </div>
     </aside>
+  );
+}
+
+export function TOCSidebar() {
+  return (
+    <TOCContent
+      mode="fixed"
+      wrapperClassName="hidden lg:block transition absolute top-0 -right-[var(--toc-width)] w-[var(--toc-width)]"
+      innerClassName="fixed top-14 w-[var(--toc-width)] h-[calc(100vh_-_20rem)] overflow-y-scroll overflow-x-hidden hide-scrollbar"
+      spacerClassName="h-8"
+    />
+  );
+}
+
+export function TOCFloatingPreview() {
+  return (
+    <TOCContent
+      mode="floating"
+      wrapperClassName="h-full w-full"
+      innerClassName="card-base h-full min-h-0 max-h-full overflow-y-auto overflow-x-hidden hide-scrollbar px-3 py-2"
+      spacerClassName="h-3"
+    />
   );
 }

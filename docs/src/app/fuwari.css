@@ -2,6 +2,22 @@
 
 :root {
   --hue: 250;
+  --color-selection-bar: linear-gradient(
+    to right,
+    oklch(0.8 0.14 0),
+    oklch(0.8 0.14 30),
+    oklch(0.8 0.14 60),
+    oklch(0.8 0.14 90),
+    oklch(0.8 0.14 120),
+    oklch(0.8 0.14 150),
+    oklch(0.8 0.14 180),
+    oklch(0.8 0.14 210),
+    oklch(0.8 0.14 240),
+    oklch(0.8 0.14 270),
+    oklch(0.8 0.14 300),
+    oklch(0.8 0.14 330),
+    oklch(0.8 0.14 360)
+  );
   --font-sans-blog:
     Roboto, sans-serif, ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans",
@@ -95,6 +111,22 @@
   --color-toc-btn-hover: oklch(0.22 0.02 var(--hue));
   --color-toc-btn-active: oklch(0.25 0.02 var(--hue));
   --float-panel-shadow: none;
+  --color-selection-bar: linear-gradient(
+    to right,
+    oklch(0.74 0.14 0),
+    oklch(0.74 0.14 30),
+    oklch(0.74 0.14 60),
+    oklch(0.74 0.14 90),
+    oklch(0.74 0.14 120),
+    oklch(0.74 0.14 150),
+    oklch(0.74 0.14 180),
+    oklch(0.74 0.14 210),
+    oklch(0.74 0.14 240),
+    oklch(0.74 0.14 270),
+    oklch(0.74 0.14 300),
+    oklch(0.74 0.14 330),
+    oklch(0.74 0.14 360)
+  );
 
   --admonitions-color-tip: oklch(0.75 0.14 180);
   --admonitions-color-note: oklch(0.75 0.14 250);
@@ -217,7 +249,7 @@ body {
   grid-template-rows: auto;
 }
 
-#toc-inner-wrapper {
+[data-toc-mode="fixed"] #toc-inner-wrapper {
   mask-image: linear-gradient(
     to bottom,
     transparent 0%,

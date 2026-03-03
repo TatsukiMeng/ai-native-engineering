@@ -3,8 +3,7 @@ export function Footer() {
 
   return (
     <footer className="onload-animation col-span-full">
-      <div className="mx-6 my-10 border-t border-dashed border-black/10 transition dark:border-white/15 md:mx-16 lg:mx-32" />
-      <div className="mb-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-[oklch(85%_0.01_var(--hue))] px-6 text-center transition dark:border-white/15">
+      <div className="mb-12 flex flex-col items-center justify-center rounded-2xl px-6 text-center transition">
         <div className="py-6 text-sm text-black/50 transition dark:text-white/50">
           © {currentYear} AI 原生工程（AI Native Engineering）
           <br />

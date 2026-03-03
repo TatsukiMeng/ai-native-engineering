@@ -12,7 +12,7 @@ import {
 import { createPageTreeRenderer } from "fumadocs-ui/components/sidebar/page-tree";
 import { useSearchContext } from "fumadocs-ui/contexts/search";
 import type { DocsLayoutProps } from "fumadocs-ui/layouts/docs";
-import { PanelLeftClose, Search } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { usePathname } from "next/navigation";
 import {
   Children,
@@ -252,9 +252,76 @@ type SidebarProps = {
   sidebar?: DocsLayoutProps["sidebar"];
 };
 
-export function Sidebar({ sidebar = {} }: SidebarProps) {
-  const { collapsed, setCollapsed } = useSidebar();
+type SidebarPanelContentProps = {
+  sidebar: DocsLayoutProps["sidebar"];
+  floating?: boolean;
+};
+
+function SidebarPanelContent({
+  sidebar = {},
+  floating = false,
+}: SidebarPanelContentProps) {
+  const { setCollapsed } = useSidebar();
   const { setOpenSearch } = useSearchContext();
+  const shouldExpandSidebar = floating;
+
+  return (
+    <div
+      className={cn(
+        "card-base flex flex-col overflow-hidden p-4",
+        floating ? "h-full min-h-0" : "min-h-[calc(100vh-9rem)]",
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <div className="font-bold text-fd-foreground">目录</div>
+        <div className="flex items-center gap-1">
+          <Button
+            size="smIcon"
+            animated={false}
+            aria-label="搜索文档"
+            onClick={() => setOpenSearch(true)}
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+          <ThemeToggle size="smIcon" animated={false} />
+          <Button
+            size="smIcon"
+            animated={false}
+            aria-label={shouldExpandSidebar ? "展开侧边栏" : "收起侧边栏"}
+            onClick={() => setCollapsed(shouldExpandSidebar ? false : true)}
+          >
+            {shouldExpandSidebar ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <div className="mb-3 border-t border-dashed border-fd-border" />
+
+      <div className="hide-scrollbar flex-1 overflow-y-auto">
+        <SidebarPageTree
+          {...sidebar.components}
+          Folder={({ item, children }) => (
+            <NestedSidebarFolder item={item as TreeFolderNode}>
+              {children}
+            </NestedSidebarFolder>
+          )}
+        />
+      </div>
+      {sidebar.footer && (
+        <div className="mt-auto border-t border-dashed border-fd-border pt-4 font-bold">
+          {sidebar.footer}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Sidebar({ sidebar = {} }: SidebarProps) {
+  const { collapsed } = useSidebar();
 
   return (
     <aside
@@ -265,49 +332,16 @@ export function Sidebar({ sidebar = {} }: SidebarProps) {
         id="sidebar-sticky"
         className="sticky top-4 flex w-full flex-col gap-4 transition-all duration-700"
       >
-        <div className="card-base flex min-h-[calc(100vh-9rem)] flex-col overflow-hidden p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="font-bold text-fd-foreground">目录</div>
-            <div className="flex items-center gap-1">
-              <Button
-                size="smIcon"
-                animated={false}
-                aria-label="搜索文档"
-                onClick={() => setOpenSearch(true)}
-              >
-                <Search className="h-4 w-4" />
-              </Button>
-              <ThemeToggle size="smIcon" animated={false} />
-              <Button
-                size="smIcon"
-                animated={false}
-                aria-label="收起侧边栏"
-                onClick={() => setCollapsed(true)}
-              >
-                <PanelLeftClose className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="mb-3 border-t border-dashed border-fd-border" />
-
-          <div className="hide-scrollbar flex-1 overflow-y-auto">
-            <SidebarPageTree
-              {...sidebar.components}
-              Folder={({ item, children }) => (
-                <NestedSidebarFolder item={item as TreeFolderNode}>
-                  {children}
-                </NestedSidebarFolder>
-              )}
-            />
-          </div>
-          {sidebar.footer && (
-            <div className="mt-auto border-t border-dashed border-fd-border pt-4 font-bold">
-              {sidebar.footer}
-            </div>
-          )}
-        </div>
+        <SidebarPanelContent sidebar={sidebar} />
       </div>
     </aside>
+  );
+}
+
+export function SidebarFloatingPreview({ sidebar = {} }: SidebarProps) {
+  return (
+    <div className="h-full w-[var(--sidebar-width)]">
+      <SidebarPanelContent sidebar={sidebar} floating />
+    </div>
   );
 }

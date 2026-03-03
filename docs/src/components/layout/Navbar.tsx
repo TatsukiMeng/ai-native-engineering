@@ -4,6 +4,7 @@ import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { renderTitleNav } from "fumadocs-ui/layouts/shared";
 import { Github } from "lucide-react";
 import { buttonStyles } from "@/components/ui/button";
+import { ThemeColorSettings } from "./ThemeColorSettings";
 
 type NavbarProps = {
   nav?: BaseLayoutProps["nav"];
@@ -23,6 +24,7 @@ export function Navbar({ nav = {}, githubUrl }: NavbarProps) {
 
         <div className="flex items-center">
           {nav.children}
+          <ThemeColorSettings />
           {githubUrl && (
             <a
               href={githubUrl}
