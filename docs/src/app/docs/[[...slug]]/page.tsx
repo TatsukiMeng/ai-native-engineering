@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LLMCopyButton, ViewOptions } from "@/components/ai/page-actions";
 import { Comments } from "@/components/Giscus";
+import { DocsBreadcrumbMeta } from "@/components/layout/DocsBreadcrumbMeta";
 import { DocsPrevNextNav } from "@/components/layout/DocsPrevNextNav";
 import { LicenseCard } from "@/components/layout/LicenseCard";
 import { gitConfig } from "@/lib/layout.shared";
@@ -43,10 +44,26 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
     ? { url: nextPage.url, title: nextPage.data.title }
     : undefined;
 
+  const sectionItems = page.slugs
+    .map((_, index) => {
+      const target = source.getPage(page.slugs.slice(0, index + 1));
+      if (!target?.url || !target?.data?.title) return null;
+
+      return {
+        url: target.url,
+        title: target.data.title,
+      };
+    })
+    .filter((item): item is { url: string; title: string } => item !== null);
+
+  const displayItems =
+    sectionItems.length > 1 ? sectionItems.slice(0, -1) : sectionItems;
+
   return (
     <DocsPage
       toc={page.data.toc}
       full={page.data.full}
+      breadcrumb={{ enabled: false }}
       tableOfContentPopover={{ enabled: false }}
       tableOfContent={{ enabled: false }}
       footer={{ enabled: false }}
@@ -86,12 +103,17 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
           </DocsDescription>
 
           {/* metadata buttons */}
-          <div className="mt-4 mb-5 flex flex-row items-center gap-2 border-b border-dashed border-fd-border pb-5">
-            <LLMCopyButton markdownUrl={markdownUrl} />
-            <ViewOptions
-              markdownUrl={markdownUrl}
-              githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/docs/content/docs/${page.slugs.join("/")}.mdx`}
-            />
+          <div className="mt-4 mb-5 flex flex-row items-center justify-between gap-3 border-b border-dashed border-fd-border pb-5">
+            <div className="min-w-0">
+              <DocsBreadcrumbMeta items={displayItems} />
+            </div>
+            <div className="flex flex-row items-center gap-2 shrink-0">
+              <LLMCopyButton markdownUrl={markdownUrl} />
+              <ViewOptions
+                markdownUrl={markdownUrl}
+                githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/docs/content/docs/${page.slugs.join("/")}.mdx`}
+              />
+            </div>
           </div>
 
           {/* markdown content */}

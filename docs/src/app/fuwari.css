@@ -72,6 +72,7 @@
   --btn-plain-bg-hover: var(--color-btn-plain-bg-hover);
   --btn-plain-bg-active: var(--color-btn-plain-bg-active);
   --line-divider: var(--color-line-divider);
+  --meta-divider: var(--color-meta-divider);
   --selection-bg: var(--color-selection-bg);
   --license-block-bg: var(--color-license-block-bg);
   --inline-code-bg: var(--color-btn-regular-bg);
@@ -162,8 +163,106 @@
     color: rgb(255 255 255 / 75%);
   }
 
+  .btn-regular {
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--btn-regular-bg);
+    color: var(--btn-content);
+  }
+
+  .btn-regular:hover {
+    background-color: var(--btn-regular-bg-hover);
+  }
+
+  .btn-regular:active {
+    background-color: var(--btn-regular-bg-active);
+  }
+
+  .dark .btn-regular {
+    color: rgb(255 255 255 / 75%);
+  }
+
+  .float-panel {
+    top: 5.25rem;
+    border-radius: var(--radius-large);
+    overflow: hidden;
+    background-color: var(--color-card-bg);
+    border: 1px solid var(--color-line-divider);
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.005),
+      0 8px 28px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s ease;
+  }
+
+  .dark .float-panel {
+    box-shadow: none;
+  }
+
+  .fuwari-dropdown-panel {
+    border-radius: var(--radius-large);
+    overflow: hidden;
+    background-color: var(--color-float-panel-bg);
+    border: 1px solid var(--color-line-divider);
+    box-shadow: var(--float-panel-shadow);
+    transition: all 0.3s ease;
+  }
+
   .expand-animation {
     z-index: 0;
+  }
+
+  .link-lg {
+    transition: all 0.2s ease;
+    border-radius: 0.375rem;
+    padding: 0.375rem;
+    margin: -0.375rem;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 0;
+  }
+
+  .link-lg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    transform: scale(0.85);
+    transition: all 0.2s ease-out;
+  }
+
+  .link-lg:hover::before {
+    transform: scale(1);
+    background-color: var(--color-btn-plain-bg-hover);
+  }
+
+  .link-lg:active::before {
+    background-color: var(--color-btn-plain-bg-active);
+  }
+
+  .text-50 {
+    color: rgb(0 0 0 / 50%);
+  }
+
+  .dark .text-50 {
+    color: rgb(255 255 255 / 50%);
+  }
+
+  .meta-icon {
+    width: 2rem;
+    height: 2rem;
+    transition: all 0.2s ease;
+    border-radius: 0.375rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--btn-regular-bg);
+    color: var(--btn-content);
+    margin-right: 0.5rem;
   }
 
   .expand-animation::before {

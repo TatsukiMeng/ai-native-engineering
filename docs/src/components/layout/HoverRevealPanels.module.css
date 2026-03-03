@@ -26,6 +26,8 @@
   top: calc(var(--nav-height) + var(--hover-navbar-offset));
   bottom: 0.75rem;
   overflow: hidden;
+  border-radius: var(--radius-large);
+  box-shadow: var(--float-panel-shadow);
   pointer-events: auto;
   z-index: 45;
   transition:
