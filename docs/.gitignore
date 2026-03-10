@@ -10,8 +10,6 @@
 /out/
 /build
 *.tsbuildinfo
-/test-results/
-/playwright-report/
 
 # misc
 .DS_Store
