@@ -85,6 +85,9 @@ function MdxTable({ children, className, ...props }: TableProps) {
     {
       className:
         "relative overflow-auto overflow-x-auto prose-no-margin my-6 mdx-table-scroll",
+      tabIndex: 0,
+      role: "region",
+      "aria-label": "Interactive table",
     },
     createElement("table", { ...props, className }, children),
   );

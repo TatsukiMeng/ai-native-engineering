@@ -24,6 +24,8 @@ test.describe("移动端表格溢出修复 / Mobile table overflow fix", () => {
 
     const tableParent = table.locator("..");
 
+    await expect(tableParent).toHaveAttribute("tabindex", "0");
+
     const overflowX = await tableParent.evaluate((el) =>
       window.getComputedStyle(el).overflowX,
     );
