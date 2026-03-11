@@ -1,141 +1,831 @@
 ---
 title: 兵器谱：Vibe Coding 工具版图与组合策略
-description: 不做单选题，用功能定位构建可控的工具组合
+description: 不做单选题，用岗位分工、模型分工和作者自己的实战习惯构建可控组合
 icon: Wrench
 ---
 
-# 工具选择先看约束，不看热度
+# 我自己的工具观，已经从“找本命”变成“分岗位”
 
-:::warning[草案声明]
-本文当前仍处于草案阶段，内容为纯 AI 生成，后续会继续补充实测数据、版本校验与人工复核。
-:::
+我自己的转变其实很直接。
 
-很多人会问：到底该选 GitHub Copilot、Cursor、Claude Code、Codex 还是 OpenCode？
+刚开始接触 AI 编程工具时，我也会反复纠结：到底谁最强，谁才是最终答案，GitHub Copilot、Cursor、Claude Code、Codex、OpenCode 到底应该选哪个。
 
-这个问题本身就有点偏了。真正该问的是：**当前任务需要哪种能力组合**。
+但用久了之后，我反而越来越不相信“本命工具”这种说法。
+
+现在我更像是在给一个小型软件团队排班：
+
+- 谁负责 IDE 里高频写码
+- 谁负责终端里跑长任务
+- 谁负责 GitHub 上的 Issue/PR 协作
+- 谁负责 PR review
+- 谁负责 subagent 的低成本铺量
+
+也就是说，**工具不是单选题，而是岗位分工题。**
+
+这不是一个抽象观点，而是我自己这段时间的实际习惯变化：
+
+- 写架构文档、规格、技术分析，我会在 Claude Opus 4.6 和 GPT-5.4 之间切换；这篇文章本身就是用 GPT-5.4 编写的
+- 真正敲代码、跑长任务、做复杂改造，我现在更偏向用 Codex
+- 想要一个最稳妥、最通用、最不容易选错的默认起点，我还是会先推 GitHub Copilot
+- Web 云端 agent 我会用，但只做我信得过的低风险任务，比如 issue 分析、轻量委派、PR review
 
 :::note[校验说明（2026-03-11）]
-本章产品定位与能力描述已按官方文档做过交叉核验。这里重点比较功能边界与协作方式，不做价格排行。
+本文提到的产品与模型，均优先参考官方文档、官方博客或官方仓库：例如 [GitHub Copilot supported models](https://docs.github.com/copilot/reference/ai-models/supported-models)、[Cursor Agent docs](https://docs.cursor.com/chat/overview)、[Trae 官方文档](https://traeide.com/docs/what-is-trae-ide)、[Claude Code docs](https://docs.anthropic.com/en/docs/claude-code/overview)、[Codex CLI docs](https://developers.openai.com/codex/cli/)、[OpenCode docs](https://opencode.ai/docs/cli/)、[Kiro 官方博客](https://kiro.dev/blog/introducing-kiro/)、[OpenSpec 官网](https://openspec.dev/)、[Spec Kit 文档](https://github.github.io/spec-kit/)。
+
+但模型可用性、套餐额度、排队情况、计费方式变化非常快，尤其是 2025 年下半年到 2026 年初这波产品迭代很凶。文中所有涉及“可用性”“额度”“计费体感”的内容，都应该理解为“截至 2026-03-11 的观察”，不是永久真理。
 :::
 
-# 先说结论：工具不是单选题，而是组合题
+:::tip[阅读地图]
+这篇不做“谁秒谁”的排行榜，而是回答四个更实际的问题：
 
-本文先用 5 个代表产品搭框架：GitHub Copilot、Cursor、Claude Code、Codex、OpenCode。
-
-重点不是“认一个本命工具”，而是三件事：
-- 给每个工具一个清晰定位
-- 给每类任务一个稳定入口
-- 给重叠能力写明优先级和 fallback
-
-:::tip[关于“订阅太多会不会太贵”]
-这个顾虑非常真实。本章先把能力边界和组合策略讲清，成本优化会在后续章节给出可执行方案。
+1. 为什么 GitHub Copilot 依然是最通用的起点
+2. Cursor、Trae、Antigravity 这些 Native IDE 应该怎么选
+3. Claude Code、Codex、OpenCode 这些 CLI Agent 各自适合什么岗位
+4. 我自己是怎么把模型、Skills、MCP、CLI 和计费策略组合起来的
 :::
 
-# 产品定位与能力地图（功能导向）
+:::important[先说清楚：这不是广告，也不是套餐购买教程]
+文中提到的各种产品，不代表我在给它们打广告。我只是把自己真实的使用习惯、偏好和判断摊开来讲，方便读者理解这些工具各自更适合放在哪个岗位上。
 
-## 五个代表工具的功能画像
+所以这篇文章会重点聊：
 
-| 产品 | 主要形态 | 核心定位 | 关键能力 | 典型优势 | 常见风险 |
-|---|---|---|---|---|---|
-| **GitHub Copilot** | IDE 插件 + GitHub 内 Agent | 在现有开发环境内做增量智能协作 | Ask/Edit/Agent 模式、Issue 到 PR 的协作链路 | 不改变团队 IDE 习惯、与 GitHub 流程衔接顺 | 容易被当成“自动写码按钮”，需求不清时返工多 |
-| **Cursor** | Native IDE | 以编辑器为中心的高频编码协作 | 多文件编辑、代码库检索、Agent 执行与改动回放 | 从“想法到改动”路径短，前端与全栈改造效率高 | 长任务若无约束，可能出现过度修改 |
-| **Claude Code** | CLI / 终端优先 Agent | 在终端里完成跨文件实现与自动化执行 | 读写代码、运行命令、调用工具、与工程脚本整合 | 适合工程化流水线、可审计、可脚本化 | 新手学习曲线较陡，对任务拆分要求高 |
-| **Codex** | CLI + App（含 slash commands） | 兼顾交互式开发与可控执行策略 | `/plan-mode`、`/review`、`/mcp`、权限与沙箱控制 | 模式切换清晰，适合“先计划再执行” | 若权限策略不收敛，容易出现执行噪声 |
-| **OpenCode** | 开源 CLI Agent | 通过 Build/Plan/Subagent 做可配置协作 | 主/子 Agent、技能加载、项目规则注入（`AGENTS.md`） | 规则与能力可定制，适配自定义工作流 | 配置自由度高，缺少约束时会产生策略分叉 |
+- 哪类工具更适合什么任务
+- 我为什么会把某些工具放进自己的工作流
+- 不同工具、模型、Specs 工具的生态位分别是什么
 
-## 按工作面分类，而不是按品牌站队
+但这篇文章**不会**把重点放在“怎么买套餐”这件事上。
 
-### IDE 内实时协作层
-核心诉求：写代码时即时反馈、低切换成本。
+比如为什么这里不会专门展开讲 Claude、ChatGPT、Google One 这些订阅套餐怎么配，或者 API 中转站怎么买、怎么买更便宜，不是因为这些问题不重要，而是因为这篇文章的目标不是教读者做套餐采购，而是先把**工具选型**这件事讲明白。
 
-代表：GitHub Copilot、Cursor。
-
-### Terminal 自动化执行层
-核心诉求：跨文件改动、命令执行、脚本化集成、CI 友好。
-
-代表：Claude Code、Codex、OpenCode（扩展可含 Gemini CLI）。
-
-### 仓库异步协作层
-核心诉求：围绕 Issue/PR 做异步交付与审核。
-
-代表：GitHub Copilot coding agent。
-
-### 通用杂活编排层
-核心诉求：把“非核心写码任务”自动化、消息化、流程化。
-
-代表：OpenClaw。
-
-# OpenClaw：特殊角色，不是主力 coding agent
-
-OpenClaw 更像“通用 AI 助手底座”，而不是专门写代码的主力执行器。
-
-把它放在“通用杂活编排层”更合理，典型场景包括：
-- 把多渠道消息整理成日报或周报
-- 汇总会议纪要并生成待办清单
-- 追踪任务状态后自动推送提醒
-- 整理发布记录、变更摘要、同步公告
-- 做轻量信息检索和临时文档整理
-
-## 什么时候该用 OpenClaw
-
-适合：跨渠道协调、文本整理、运营与协同杂活。
-
-不适合：把它当成主力代码实现引擎，直接承担复杂仓库改造。
-
-:::warning[不要角色错位]
-如果把 OpenClaw 当“唯一 coding agent”，通常会出现上下文不稳定、执行链条过长、工程反馈不闭环的问题。
+至于成本、套餐、额度、API 采购这些问题，读者当然要自己认真权衡，但那是另一层决策，不是这篇的主轴。
 :::
 
-# CLI、MCP、Skills：追求精准覆盖，不追求数量
+# 一张表先看全局
 
-## 三层能力边界
+先给一个全景表，但先说清楚：**表格只是导航，不是结论。** 真正重要的产品，后面我会单独展开。
 
-| 层级 | 解决的问题 | 适合承载什么能力 | 典型载体 |
+| 阵营 | 代表产品 | 我给它的岗位 | 一个典型例子 |
 |---|---|---|---|
-| **CLI** | 如何直接执行动作 | 文件改动、测试运行、构建发布、脚本编排 | Claude Code / Codex / OpenCode + 系统命令 |
-| **MCP** | 如何稳定接入外部系统 | Issue/PR、文档库、设计稿、数据库等结构化接口 | 各类 MCP Server |
-| **Skills** | 如何复用团队经验 | 固定任务模板、质量门禁步骤、组织规范 | `SKILL.md`、项目内命令模板 |
+| **通用基线** | **GitHub Copilot** | 把 IDE、GitHub、CLI、Code Review 串起来 | IDE 里写代码，GitHub 上委派 issue，CLI 里继续跑任务 |
+| **Native IDE** | **Cursor / Trae / Antigravity** | 高强度写码、页面联动、编辑器内即时协作 | 一边改 Next.js 页面，一边看 diff、终端、预览 |
+| **CLI Agent** | **Claude Code / Codex / OpenCode** | 长任务、跨文件改造、脚本化执行 | 让 Agent 自己读 repo、改代码、跑测试、继续迭代 |
+| **Web / 云端** | **GitHub Copilot coding agent / CodeRabbit** | 后台委派、PR review、异步协作 | 开 issue 让 agent 回来提 PR，或先让 CodeRabbit 扫一遍 PR |
+| **SpecDriven** | **Kiro / OpenSpec / Spec Kit** | 先对齐规格，再让 Agent 动手 | 先写 specs / proposal / tasks，再开始实现 |
 
-## 冲突治理：一类能力只认一个主入口
+:::important[这张表最想表达的只有一件事]
+我现在已经不再问“谁最强”，而是先问“这个工具该负责什么岗位”。
+:::
 
-如果两个工具都能做同一件事，Agent 很容易在执行时摇摆，结果就是噪声变多、成本上升。
+# 为什么我依然把 GitHub Copilot 当默认起点
 
-建议至少写一份“能力归属声明”：
+如果让我给绝大多数读者一个默认起点，我依然会先推 GitHub Copilot。
 
-```md
-- 代码编辑与测试执行：走 CLI 主入口（Codex）
-- GitHub 元数据读写（Issue/PR 标签、状态）：走 MCP GitHub Server
-- 重复性流程（如 /review-pr、/commit-message）：走 Skills
-- 发生能力重叠时：优先主入口，次入口仅在主入口不可用时启用
+不是因为它在每一项上都第一，而是因为它是目前最通用、最完整、最不容易选错的那个。
+
+## 它的优势不是某一个功能点，而是整条链路都接得上
+
+GitHub Copilot 现在已经不是“一个 IDE 里的自动补全插件”了。
+
+官方文档已经把它拆成了多条能力线：
+
+- [supported models](https://docs.github.com/copilot/reference/ai-models/supported-models)：支持多家主流模型，不是单一模型入口
+- [Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-copilot-cli)：终端内直接跑 agent，还支持 plan mode
+- [coding agent](https://github.blog/ai-and-ml/github-copilot/whats-new-with-github-copilot-coding-agent/)：可以在 GitHub 上后台执行任务并回 PR
+- [code review](https://github.blog/changelog/2026-03-05-copilot-code-review-now-runs-on-an-agentic-architecture/)：已经走向 agentic review，而不是纯静态点评
+- [plans](https://docs.github.com/en/copilot/get-started/plans)：个人、团队、企业套餐也已经把这些能力串得很深
+
+换句话说，它的强不是某个聊天框比别人更花，而是它已经把 **IDE、GitHub.com、CLI、review、异步 agent** 这条链打通了。
+
+## 这就是为什么我说它最通用
+
+如果一个人的工作流高度绑定 GitHub，那 GitHub Copilot 的优势会非常具体，而不是一句空泛的“生态好”。
+
+比如下面这条链，在 Copilot 体系里就是自然连起来的：
+
+1. 在 IDE 里边写边问，先把需求拆清楚
+2. 在终端里用 Copilot CLI 跑一个更长的实现或排查任务
+3. 回到 GitHub，把某个 issue 直接委派给 coding agent 去后台处理
+4. PR 打开之后，再让 Copilot code review 或人工 review 接手
+
+这条链路在别家不是不能做，但 GitHub 作为平台方，天然有主场优势。仓库、Issue、PR、Actions、组织权限、review 入口，本来就都在它自己手里。
+
+## 这也是我为什么说它适合“工作流很杂的人”
+
+我会把 GitHub Copilot 推荐给这些人：
+
+- 白天在 VS Code 写前端，晚上在 JetBrains 改后端的人
+- 既要在 IDE 里干活，也要在 GitHub 网页里看 PR、看 issue、看 review 的人
+- 不想因为换 AI 工具而重建整套工作流的人
+- 想先选一个默认靠谱的底座，再慢慢往上加 CLI Agent 或 SpecDriven 工具的人
+
+## 我为什么觉得它的模型池也很关键
+
+这一点是我自己的长期体感，不是 benchmark 结论。
+
+GitHub Copilot 的一个现实优势，是它的模型池通常更宽，且优先级通常不低。官方 models 页面现在能看到 OpenAI、Anthropic、Google 等多家模型都已经接进来，包括 [Claude Opus 4.6、Gemini 3.1 Pro、GPT-5.3-Codex](https://docs.github.com/copilot/reference/ai-models/supported-models)。
+
+这意味着什么？
+
+意味着当某个模型正处在高峰期、某个专门入口开始排队时，多模型平台的 fallback 空间就会更大。
+
+当然，这里也要说句实话：这不是绝对的。新模型刚上线的时候，供应商优先保自家入口是很常见的。比如 Google 自家的 Gemini 3.1 Pro 相关入口、Antigravity、Gemini CLI，在某些时间点确实可能更先吃到资源。
+
+但从我的使用习惯看，**“平台整合深 + 模型池宽 + GitHub 主场优势”**，就是 GitHub Copilot 为什么依然最像默认起点的原因。
+
+## 一个具体例子：为什么它像“通用底座”
+
+如果让我给一个团队做最省心的起步配置，我大概率会这么定：
+
+- IDE 默认装 GitHub Copilot
+- GitHub 仓库里的异步委派先用 Copilot coding agent
+- PR review 先让 Copilot code review 扫第一遍
+- 真正复杂的长任务，再补一个 Codex 或 Claude Code 当 CLI 主执行器
+
+也就是说，我不会让 GitHub Copilot 去替代一切，但我很愿意让它先做底座。
+
+:::tip[官方页面]
+- [Supported AI models in GitHub Copilot](https://docs.github.com/copilot/reference/ai-models/supported-models)
+- [About GitHub Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-copilot-cli)
+- [What’s new with GitHub Copilot coding agent](https://github.blog/ai-and-ml/github-copilot/whats-new-with-github-copilot-coding-agent/)
+- [Copilot code review now runs on an agentic architecture](https://github.blog/changelog/2026-03-05-copilot-code-review-now-runs-on-an-agentic-architecture/)
+:::
+
+# Native IDE 阵营：Cursor、Trae、Antigravity 我怎么分
+
+Native IDE 的共同特点就一句话：**交互路径短。**
+
+改代码、看 diff、跑终端、切预览、继续问，很多事情都在一个壳里完成。对高频写码的人来说，这种少切几次窗口的感觉，真的很舒服。
+
+但这三个产品的气质差别也很明显。
+
+## Cursor：很强，但它更像“完整工具”，不是“平台底座”
+
+Cursor 的官方文档其实已经把自己的能力说得很清楚了：
+
+- [Agent overview](https://docs.cursor.com/chat/overview)：Agent 可以自主完成复杂编码任务、跑终端命令、编辑代码
+- [Tools](https://docs.cursor.com/agent/tools)：能搜索代码库、读文件、编辑、跑 terminal、接 MCP
+- [Background Agents](https://docs.cursor.com/en/background-agents)：还能把任务丢到远程环境，异步运行并回传结果
+
+所以如果只看“一个 AI IDE 该有的功能”，Cursor 基本没有明显短板。
+
+这也是为什么我会说它是一个很成熟、很完整、也很“中规中矩”的选择。这里的“中规中矩”不是贬义，恰恰是在说它没有明显偏科。
+
+### 一个很具体的使用场景
+
+比如让我做一个 Next.js 落地页改版：
+
+- 同时改 Hero 区、pricing toggle、FAQ、footer CTA
+- 顺手调一批 Tailwind class 和 design token
+- 跑 `pnpm dev` 看效果
+- 再让 Agent 顺手补一点无聊但必要的重构
+
+这种任务在 Cursor 里通常会很顺。因为它天然就是“编辑器中心”的工作流：侧边 Agent、diff review、terminal、rules、background agent 都围着这件事转。
+
+### 但我不会把它当 GitHub Copilot 的替代品
+
+我对 Cursor 的看法一直是：**它很强，但它强在编辑器，不是强在平台。**
+
+所以它和 GitHub Copilot 的差别不只是功能列表，而是重心不同：
+
+- Cursor 更适合“我今天就是高强度在编辑器里写码”
+- GitHub Copilot 更适合“我今天要跨 IDE、CLI、GitHub 网页、review 多场景切换”
+
+## Trae：如果读者支持国产，我觉得它值得试，但别对顶级模型供应抱幻想
+
+Trae 官方文档的定位也很清楚：它是 ByteDance 的 AI IDE，支持从 VS Code 和 Cursor 迁移，强调 AI interaction、实时建议、跨文件代码生成和插件生态（见 [What is Trae IDE?](https://traeide.com/docs/what-is-trae-ide)）。
+
+我对 Trae 的态度其实很明确：**如果读者支持国产，我觉得它值得试。**
+
+因为它至少有几件事做得很对路：
+
+- 中文语境更自然
+- 对国内开发者更友好
+- 迁移门槛低
+- 现代 AI IDE 该有的那些东西，它也在补齐
+
+### 一个我会把它拿出来用的例子
+
+比如一个任务是：
+
+- 把一段中文需求改成更细的前端拆解
+- 顺手解释一个报错
+- 再把两三个组件和一个提交说明一起补出来
+
+这类中文语境特别重、又不一定需要顶级 frontier model 的任务，Trae 其实很合适。
+
+### 但我不会拿它去幻想“顶配模型无限畅打”
+
+这一点我会说得很直白：
+
+不要把“支持顶级模型”理解成“顶级模型想用就用、想跑多久就跑多久”。
+
+现实世界里，模型供应、地区策略、排队、峰值优先级、会员额度，这些都会影响体验。哪怕是会员，也不代表永远不用排队。这个问题不一定是 Trae 自己能完全决定的，而是整个供给链路就有现实约束。
+
+所以我对 Trae 的定位一直不是“靠它白嫖全球最丝滑的顶级模型体验”，而是：
+
+- 它是国产生态里值得纳入工具箱的一员
+- 它适合做日常补位
+- 但别把所有对顶级模型供应的幻想都压在它身上
+
+## Antigravity：如果主要工作是搓页面，我真的会优先想到它
+
+Google 在 2025 年 11 月发布 [Antigravity](https://developers.googleblog.com/en/build-with-google-antigravity-our-new-agentic-development-platform/) 时，定位就不是“再做一个会补全的 IDE”，而是一个 agent-first 的开发平台：一个任务可以跨 editor、terminal、browser 去执行。
+
+这也是我为什么一直说，Antigravity 特别适合一类人：**搓页面的人。**
+
+原因非常具体：
+
+- 它的官方定位里就强调 editor、terminal、browser 三面联动
+- 它用 Artifacts（截图、录屏、任务卡片）做验证，这对 UI 迭代特别友好
+- Google 对 Gemini 3.1 Pro 这条线的公开能力说明，可以参考 [Gemini 3 API updates](https://developers.googleblog.com/en/new-gemini-api-updates-for-gemini-3/)。为了和前文口径统一，我这里都按 Gemini 3.1 Pro 来写。
+
+### 一个很典型的 prompt 例子
+
+如果我要让它改一个前端页面，我不会只说“优化一下样式”。
+
+我更会给这种任务：
+
+```text
+把这个 B2B SaaS landing page 的 Hero、pricing toggle 和 testimonial carousel 改得更像 Stripe 一点，
+但不要抄风格。保留蓝紫渐变基调，按钮圆角控制在 14px，
+补一个滚动 reveal，最后给我截图和改动说明。
 ```
 
-:::tip[工程实践原则]
-工具数量不重要，覆盖是否精准才重要。宁可少而稳，也不要多而乱。
+这种任务为什么适合 Antigravity？
+
+因为它不是纯文本任务，而是要同时看：
+
+- 页面结果好不好看
+- 交互顺不顺
+- 视觉层级对不对
+- 浏览器里实际效果有没有跑偏
+
+### 我为什么不把它吹成“前端唯一真神”
+
+因为我真正想表达的其实更朴素：
+
+**只要 Gemini 3.1 Pro 在前端审美、多模态输入、页面生成这几件事上继续保持强势，Antigravity 就会长期是前端方向很有竞争力的选择。**
+
+但如果工作重点是后端服务、数据库迁移、脚本自动化、CI/CD 治理，那它的吸引力就没那么大了。
+
+:::warning[Native IDE 选型最容易踩的坑]
+最常见的误区之一，就是把“功能都有”误以为“定位相同”。
+
+其实三者完全不是一回事：
+
+- Cursor 更像成熟完整的 AI IDE
+- Trae 更像国产生态里的顺手补位工具
+- Antigravity 更像前端和多模态场景里的特化选手
 :::
 
-# 组合策略草案（待你给最终选项）
+:::tip[官方页面]
+- [Cursor Agent overview](https://docs.cursor.com/chat/overview)
+- [Cursor tools](https://docs.cursor.com/agent/tools)
+- [Cursor background agents](https://docs.cursor.com/en/background-agents)
+- [What is Trae IDE?](https://traeide.com/docs/what-is-trae-ide)
+- [Build with Google Antigravity](https://developers.googleblog.com/en/build-with-google-antigravity-our-new-agentic-development-platform/)
+- [Gemini 3.1 Pro 能力更新参考页](https://developers.googleblog.com/en/new-gemini-api-updates-for-gemini-3/)
+:::
 
-你已经明确现有“选型内容不合适”，所以这里先给结构化草案，不做最终绑定推荐。
+# CLI 阵营：我真正拿来干活的主战场
 
-## 一个可落地的四步流
+如果说 Native IDE 更像“带 AI 的编辑器”，那 CLI Agent 在我这里更像“可控的虚拟员工”。
 
-| 阶段 | 主目标 | 主工具类型 | 说明 |
-|---|---|---|---|
-| 需求澄清 | 把需求说清并拆成可执行任务 | IDE 协作层 | 用 Copilot/Cursor 做问题分解与影响面梳理 |
-| 实现落地 | 跨文件改动与命令执行 | CLI 执行层 | 用 Claude Code/Codex/OpenCode 任选一个作为主执行器 |
-| 协作交付 | 把结果挂到 Issue/PR 流程 | 仓库协作层 | 用 GitHub Agent 处理异步协作与审查上下文 |
-| 杂活托管 | 把非核心编码任务自动化 | 通用编排层 | 用 OpenClaw 做汇总、同步、提醒与临时整理 |
+我真正会拿去跑长任务、跨文件改造、自动化执行的主战场，依然是 CLI。
 
-## 下一步怎么收敛成你的最终选型
+## Claude Code：如果我要尝最新范式，我通常还是会先开它
 
-后续你给出约束后，我会按同一模板落到可执行版本：
-- 团队规模和协作平台
-- 代码库规模与主要语言
-- 交付节奏（原型冲刺或长期维护）
-- 可接受的工具复杂度上限
+Anthropic 对 Claude Code 的官方定义很直接：它是 lives in your terminal 的 agentic coding tool，能 build features、debug、navigate codebase、automate tedious tasks（见 [overview](https://docs.anthropic.com/en/docs/claude-code/overview)）。
+
+而且它不是一个“只会聊天”的 CLI：
+
+- [slash commands](https://docs.anthropic.com/en/docs/claude-code/slash-commands) 里已经有 `/agents`、`/mcp`、`/model`、`/permissions` 等能力
+- [subagents](https://docs.anthropic.com/en/docs/claude-code/sub-agents) 文档也明确写了：Claude Code 会在合适的时候自动委派 subagent；只有在想查看、管理或显式点名某个 subagent 时，才需要自己去碰 `/agents`
+- [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) 里有 `PreToolUse`、`PostToolUse`、`Stop`、`SubagentStop` 等生命周期事件
+
+所以如果我今天的目标是：**先尝最前沿的 Agentic Coding 玩法**，我通常还是会先想到 Claude Code。
+
+### 一个很典型的例子
+
+比如我要处理一个稍复杂的仓库任务：
+
+- 先让 Claude 自己拆 plan
+- 如果任务和已有 subagent 的能力匹配，它通常会自己把搜索 repo 结构、代码审查、测试修复这类子任务委派出去
+- 同时挂一个 `PreToolUse` hook，禁止它直接动生产配置或危险命令
+- 只有在我想明确指定某个 specialized role 时，才会显式用 `/agents` 去查看或点名调用
+- 最后在终端里让它自己跑测试、修 lint、继续收口
+
+这套流程，Claude Code 的原生味道会特别浓。也正因为它一直在推 hooks、subagents、Unix 式脚本化，所以很多“最近很火的 Agent workflow”，溯源时都能看到它的影子。
+
+## Codex：我现在真正写代码的主力，更偏向它
+
+这一点我就不绕弯子了：**如果是我自己真正动手写代码，我现在更偏向 Codex。**
+
+原因也很直接：
+
+- [Codex CLI](https://developers.openai.com/codex/cli/) 本身就是 OpenAI 自家的 coding agent 入口
+- 官方把 [sandboxing](https://developers.openai.com/codex/concepts/sandboxing/) 和 [approvals](https://developers.openai.com/codex/agent-approvals-security) 设计得很明白
+- [worktrees](https://developers.openai.com/codex/app/worktrees/) 这套并行思路，对多 agent 并行特别友好
+- `GPT-5.3-Codex` 的官方发布页明确强调了 long-running tasks、tool use、complex execution（见 [Introducing GPT-5.3-Codex](https://openai.com/index/introducing-gpt-5-3-codex/)）
+
+### 我为什么把编码主力切到 Codex
+
+因为它有一个非常合我胃口的习惯：**太爱翻文档、翻文件了。**
+
+它往往不愿意在信息不足时直接下手，而是先去看：
+
+- 代码结构到底是什么
+- 文档有没有写清楚
+- 相邻文件怎么组织
+- 测试到底是怎么跑的
+
+这件事在某些人看来会觉得“怎么这么慢”。
+
+但从我自己的代码质量要求看，这恰恰是好事。因为最怕的不是模型慢，而是它一上来就自信开写，最后写出一锅黑盒面条代码。
+
+### 一个很具体的例子：为什么我觉得 worktree 很香
+
+如果一个任务比较大，比如：
+
+- 一个 Agent 修登录流程
+- 一个 Agent 补测试
+- 一个 Agent 改文档和迁移说明
+
+我更愿意让它们分开工作，而不是全部塞进同一个大上下文里打架。Codex 的 worktree 思路，就特别适合这种懒人并行：多个 Agent 各干各的，互不干扰，最后再收敛。
+
+### 还有一个很现实的点：性能体感
+
+Codex CLI 官方自己也写了，它是 built in Rust for speed and efficiency。这个点我非常认同。
+
+如果读者对性能、内存占用、长会话流畅度比较敏感，Rust 写的 CLI 工具通常就是更舒服。
+
+## OpenCode：如果想 DIY、想追开源生态，它真的很值得玩
+
+OpenCode 的官方文档已经很能说明它的性格了：
+
+- [CLI](https://opencode.ai/docs/cli/)：有 TUI、`run`、`agent`、`attach`、`serve`、`web` 等命令
+- [Commands](https://opencode.ai/docs/commands/)：支持自定义 slash commands
+- [repo](https://github.com/anomalyco/opencode)：它是一个开源 coding agent，不是封闭黑盒
+
+所以它最大的魅力，不是“厂商给了什么”，而是“社区还能继续往上叠什么”。
+
+### 一个很典型的例子
+
+如果我要给一个团队做一套高度定制的 agent harness，我会更愿意从 OpenCode 这种底盘开始：
+
+- 自定义 `/test`、`/review-pr`、`/ship` 这类命令
+- 把 agent 和 model 绑定起来
+- 在 TUI 里跑日常任务
+- 需要时再开 `web` 或 `attach` 去接远程会话
+
+### 为什么我说它适合 DIY 玩家
+
+因为它真的很容易被玩成一个“可改装底盘”。
+
+而且开源生态的外延也长得很快。像社区里围绕 OpenCode 发展出来的各种 harness、workflow、整夜循环玩法，本质上都在做同一件事：**把它往更自治、更工程化的方向推。**
+
+但代价也很明确：越能跑，越烧 Token；越自由，越需要治理。
+
+### 一句很实在的判断
+
+如果读者喜欢折腾、喜欢生态、喜欢自己拼工作流，OpenCode 很值得玩。
+
+但如果读者想要的是“开箱就稳、少折腾、默认有边界”，那 Codex 或 Claude Code 往往更省心。
+
+:::important[CLI 阵营我自己的用法]
+我不会同时把两个 CLI Agent 都当主执行器。
+
+更稳的方式通常是：
+
+- 选一个做主力执行器
+- 再留一个做备胎或专项角色
+
+否则一个仓库里一会儿 Claude Code，一会儿 Codex，一会儿 OpenCode，最后经常不是三倍效率，而是三倍噪声。
+:::
+
+:::tip[官方页面]
+- [Claude Code overview](https://docs.anthropic.com/en/docs/claude-code/overview)
+- [Claude Code slash commands](https://docs.anthropic.com/en/docs/claude-code/slash-commands)
+- [Claude Code hooks](https://docs.anthropic.com/en/docs/claude-code/hooks)
+- [Codex CLI](https://developers.openai.com/codex/cli/)
+- [Codex sandboxing](https://developers.openai.com/codex/concepts/sandboxing/)
+- [Codex worktrees](https://developers.openai.com/codex/app/worktrees/)
+- [Introducing GPT-5.3-Codex](https://openai.com/index/introducing-gpt-5-3-codex/)
+- [OpenCode CLI](https://opencode.ai/docs/cli/)
+- [OpenCode commands](https://opencode.ai/docs/commands/)
+- [OpenCode GitHub repo](https://github.com/anomalyco/opencode)
+:::
+
+# Web 云端阵营：我会用，但我不会完全信
+
+这一段我只写我自己的真实态度：**我现在依然很少把 Web 云端 agent 当主力开发工具。**
+
+不是因为它们没用，而是因为我对 AI 现阶段的无人盯防自主开发能力，还是没有那么放心。
+
+哪怕我已经给了 `AGENTS.md`、给了 OpenSpec、给了项目规则，我也不会很安心地让它在后台乱跑几个小时，然后回来指望它直接交一份复杂、可 merge、可上线的生产改造。
+
+## 我真正会把它们用在什么地方
+
+我现在会把 Web / 云端 agent 放在这些位置：
+
+- issue 分析与任务拆解
+- PR review / code review
+- 低风险的后台委派
+- 对已有实现做总结、解释、补文档
+
+这也是为什么我不会在这一章里大吹“云端 agent 全自动接项目”这条路。
+
+## 几个更具体的例子
+
+### 例子一：GitHub Copilot coding agent 适合后台委派
+
+GitHub 自己对 [Copilot coding agent](https://github.blog/ai-and-ml/github-copilot/whats-new-with-github-copilot-coding-agent/) 的描述就很明确：开一个 issue，delegate 给 agent，它在后台干活，最后回 PR。
+
+所以如果一个任务是这种级别：
+
+- 给现有模块补一组单测
+- 顺手修一个边角 bug
+- 清理一个范围明确的小型技术债
+
+那我会觉得它很适合放到后台跑。
+
+### 例子二：OpenCode 生态其实也不只活在本地终端里
+
+这一点我觉得也应该说清楚：Web / 云端这块，不是只有 GitHub Copilot 一家。
+
+OpenCode 官方文档其实已经把这条线铺得挺开了：
+
+- [GitHub integration](https://opencode.ai/docs/github/) 里明确写了，`/opencode` 或 `/oc` 评论会让 OpenCode 在 **GitHub Actions runner** 里执行任务
+- [CLI docs](https://open-code.ai/docs/en/cli) 里也写了 `web`、`serve`、`attach` 这些命令，说明它并不只是一个本地 TUI，还能把 backend 暴露出来给 Web / mobile 场景接入
+
+所以如果是在 GitHub 上用 OpenCode，我自己的理解基本就是：**它通常偏 Action 这一套。**
+
+一个很典型的场景就是：
+
+- 在 issue 或 PR 评论里写 `/oc`
+- 让它在 GitHub Actions 里跑一次问题排查、轻量修复或 triage
+- 最后回一个 PR 或解释结果
+
+这类玩法很适合异步协作，但我依然不会因此就把它当成“可以放心无人值守的大型生产改造引擎”。
+
+### 例子三：Codex 也不只是本地 CLI，它本来就有云端任务这条线
+
+这一点同样值得补一句。
+
+OpenAI 自己对 [Codex Cloud](https://developers.openai.com/codex/cloud) 的描述就很直接：Codex can work on tasks in the background, including in parallel, using its own cloud environment。更早的 [Introducing Codex](https://openai.com/index/introducing-codex/) 也把它定义成 cloud-based software engineering agent，而且每个任务都跑在自己的 cloud sandbox 里。
+
+所以如果一个任务更适合异步后台执行，比如：
+
+- 让它去看一个陌生仓库并总结结构
+- 让它做一轮 code review 或问题定位
+- 让它在云端环境里先跑一遍任务，再决定要不要把结果接回本地
+
+那 Codex 其实也有很明确的云端入口，而不是只能在本地 CLI 里用。
+
+### 例子四：CodeRabbit 很适合先打一遍 review 底稿
+
+CodeRabbit 的官方定位也很清晰：它是 [AI-powered code review and planning platform](https://docs.coderabbit.ai/)。
+
+所以如果一个 PR 已经出来了，但我不想第一眼就自己生啃，我会很愿意让 CodeRabbit 先扫一遍：
+
+- 有没有明显空指针或边界条件
+- 有没有重复逻辑
+- 有没有命名和结构上的低级问题
+- 有没有值得追问的改动点
+
+然后我再做真正的人类 review。这样它更像一个“先打底稿的 reviewer”，而不是“代替我签字的 reviewer”。
+
+## 为什么我不愿意把它们神化
+
+因为 Web 云端 agent 最容易制造两种幻觉：
+
+1. 给了规则文档，就以为它真的吃透了规则
+2. 跑出来很多代码，就以为工程质量一定没问题
+
+现实恰恰相反：
+
+- 无人值守链路越长，积累错误的机会越多
+- 生成代码越多，人工审查越重要
+- 自动化程度越高，越不能放弃边界和熔断
+
+:::danger[我对 Web 云端 agent 的底线]
+我会用它们，但只放在我信得过的位置：
+
+- 后台委派
+- 轻量实现
+- review 辅助
+- 文档和分析类杂活
+
+至于复杂生产改造，我现在仍然更信本地可控的 CLI Agent。
+:::
+
+:::tip[官方页面]
+- [What’s new with GitHub Copilot coding agent](https://github.blog/ai-and-ml/github-copilot/whats-new-with-github-copilot-coding-agent/)
+- [OpenCode GitHub integration](https://opencode.ai/docs/github/)
+- [OpenCode CLI](https://open-code.ai/docs/en/cli)
+- [Codex Cloud](https://developers.openai.com/codex/cloud)
+- [Introducing Codex](https://openai.com/index/introducing-codex/)
+- [CodeRabbit docs](https://docs.coderabbit.ai/)
+:::
+
+# 我的模型分工，不是“谁最贵用谁”，而是“谁擅长做什么”
+
+如果只说我自己的日常分工，我现在已经非常固定了。
+
+## 第一层：写架构文档、规格、技术分析，我会在 Claude Opus 4.6 和 GPT-5.4 之间切换
+
+像这种任务：
+
+- 写架构方案
+- 写章节提纲
+- 写工具比较
+- 做复杂 review
+- 做需要较强结构化表达的技术文档
+
+我现在不会只用一个模型。像写架构方案、规格、工具分析这类任务，我通常会在 Claude Opus 4.6 和 GPT-5.4 之间切换。
+
+这篇文章本身，就是我用 GPT-5.4 编写的。之所以会把 GPT-5.4 拉进这类任务里，一个重要原因是 OpenAI 在 [Introducing GPT-5.4](https://openai.com/index/introducing-gpt-5-4/) 里明确强调了两点：它是 *most capable and efficient frontier model for professional work*，同时也是 *most token efficient reasoning model yet*。这只是官方说法，不是我替官方做结论，但在文档、分析、专业写作这类任务上，我确实愿意把它和 Claude Opus 4.6 换着用。
+
+至于 Claude Opus 4.6，我依然觉得它在这种偏“技术表达 + 深度分析 + 长链路组织”的任务上很强。Anthropic 官方自己对 [Claude Opus 4.6](https://www.anthropic.com/claude/opus) 的定位，也明确强调了 coding、agents、复杂多步骤工作流和可靠性。
+
+## 第二层：真正写代码，我现在更偏 Codex / GPT-5.3-Codex
+
+自从 [GPT-5.3-Codex](https://openai.com/index/introducing-gpt-5-3-codex/) 出来之后，我真正写代码的主力就更偏向 Codex 了。
+
+原因不是一句“benchmark 更高”这么简单，而是它的工作习惯很适合我：
+
+- 它愿意翻文档
+- 它愿意翻文件
+- 它愿意先确认上下文再动手
+- 它在长任务里更像一个认真做功课的工程师
+
+比如让我做一个真实工程任务：
+
+- 给 Fumadocs 文档站补一个搜索入口
+- 调整 sidebar 的层级和路由
+- 顺手补掉几处排版 bug
+- 再跑一遍构建和检查
+
+这种任务我现在基本会优先给 Codex，而不是先丢给最会聊天的模型。
+
+## 第三层：subagent、搜索、信息检索、铺量任务，我会用高性价比模型
+
+我不会把所有 subagent 都开顶级模型。
+
+如果任务是这种：
+
+- 搜资料
+- 扫一批 issue
+- 初筛日志
+- 做信息归类
+- 跑低风险分析
+
+那我更愿意用便宜、够用、并发高的模型。
+
+比如 Z.ai 这条线里，官方的 [GLM Coding Plan FAQ](https://docs.z.ai/devpack/faq) 已经明确写了 5 小时窗口额度和支持的模型范围；而 [GLM-4.7](https://huggingface.co/zai-org/GLM-4.7) 和 [GLM-5](https://huggingface.co/zai-org/GLM-5) 本身也都在强调 coding、agentic tasks 和长任务能力。
+
+对我来说，这类模型最重要的价值不是“绝对最强”，而是：
+
+- 便宜
+- 并发友好
+- 适合做流水线工人
+
+## 一个我自己的简化分工表
+
+| 任务 | 我优先开的模型 | 一个具体例子 |
+|---|---|---|
+| 架构文档 / 技术文章 / 复杂 review | **Claude Opus 4.6 / GPT-5.4** | 写规格、写方案、写这类文章、拆复杂工作流 |
+| 真实写代码 / 跨文件改造 / 长任务 | **GPT-5.3-Codex** | 改仓库结构、补测试、跑命令、查文档 |
+| UI 页面 / 设计稿还原 / 多模态前端 | **Gemini 3.1 Pro** 一类 | 改 landing page、看截图调样式 |
+| subagent / 搜索 / 分析 / 铺量 | **GLM-4.7 / GLM-5** 一类 | 扫 issue、搜资料、做初筛、并发跑杂活 |
+
+:::important[我真正省钱的方式，不是忍着不用，而是分层]
+顶级模型做决策，主力模型做实现，便宜模型做铺量。
+
+如果 20 个 Agent 全都开顶配模型，钱包基本会比项目先下线。
+:::
+
+:::tip[官方页面]
+- [Claude Opus 4.6](https://www.anthropic.com/claude/opus)
+- [GPT-5.4](https://openai.com/index/introducing-gpt-5-4/)
+- [Introducing GPT-5.3-Codex](https://openai.com/index/introducing-gpt-5-3-codex/)
+- [Gemini 3.1 Pro 能力更新参考页](https://developers.googleblog.com/en/new-gemini-api-updates-for-gemini-3/)
+- [GLM Coding Plan FAQ](https://docs.z.ai/devpack/faq)
+- [GLM-4.7](https://huggingface.co/zai-org/GLM-4.7)
+- [GLM-5](https://huggingface.co/zai-org/GLM-5)
+:::
+
+# Skills、MCP、CLI：我现在的原则就是精准、低噪声、需求驱动
+
+我最常见到的错误配置，就是一上来疯狂装 Skills、疯狂挂 MCP、疯狂塞 CLI，最后得到的不是增强版 Agent，而是一个高噪声工具堆。
+
+我现在的原则很简单：**精准、低噪声、需求驱动。**
+
+## 三者的岗位其实完全不同
+
+| 能力层 | 我拿它解决什么问题 | 我最常见的例子 |
+|---|---|---|
+| **CLI** | 让 Agent 真正执行动作 | 改文件、跑测试、查 GitHub、看 Actions、发命令 |
+| **MCP** | 让 Agent 稳定接入外部系统 | Figma、Notion、数据库、GitHub 元数据 |
+| **Skills** | 复用高频任务模板 | `/review-pr`、`/commit-message`、前端页面改版模板 |
+
+## 为什么我经常先给 CLI，而不是先上 MCP
+
+原因很朴素：AI 天生就会写命令。
+
+尤其是 GitHub 高度相关的项目，我经常更愿意先给它一个 `gh` CLI，而不是先挂 GitHub MCP。
+
+### 一个很具体的例子
+
+如果我的需求是这些：
+
+- 看最近 20 个 issue
+- 找谁负责某个 PR
+- 查某个 workflow 为什么挂了
+- 拉一个 PR 的 diff 和评论
+
+那我宁愿让 Agent 跑：
+
+```bash
+gh issue list
+gh pr view 123 --comments
+gh run list
+gh run view <run-id> --log
+```
+
+而不是先去给它塞一个 GitHub MCP，再期待它把所有元数据流都处理得更漂亮。
+
+不是 GitHub MCP 没用，而是从“低噪声、低上下文、快速稳定干活”的角度看，`gh` 往往更务实。
+
+## 前端项目我会怎么配
+
+如果我今天写的是前端项目，我一般会按下面这种思路配：
+
+```mdx
+- 页面和组件迭代：前端 / UI 类 skill
+- 设计稿与视觉上下文：Figma 能力
+- React / Next.js 官方文档入口：框架类 skill 或文档工具
+- 部署与预览：Vercel 相关能力
+- 真正改代码和跑命令：CLI 主入口
+```
+
+这正好也说明了我为什么一直强调“需求驱动”：
+
+- 写前端，就别先装一堆数据库 MCP
+- 写 GitHub 重项目，就别忽略 `gh` CLI
+- 做重复性任务，就把它沉淀成 skill，而不是每次重新口述一遍
+
+## 一条我现在很认同的经验
+
+**一类能力，只认一个主入口。**
+
+比如：
+
+```mdx
+- 代码修改与测试执行：走 CLI 主入口
+- GitHub 仓库操作：优先 `gh` CLI
+- 设计稿和组件信息：走 Figma / 相关 MCP
+- 重复性流程：沉淀成 Skills
+- 发生能力重叠时：主入口优先，次入口只做兜底
+```
+
+:::warning[别把工具箱堆成垃圾场]
+两个 MCP、三个 skill、四套命令都能做同一件事时，模型最容易出现的不是“更聪明”，而是“开始摇摆”。
+:::
+
+# SpecDriven 也必须进工具箱：Kiro、OpenSpec、Spec Kit 我怎么用
+
+除了“让 Agent 去写代码”，还有一类工具非常重要：**让 Agent 在写代码之前先对齐规格。**
+
+这就是为什么我一直认为，SpecDriven 工具必须进工具箱。
+
+## Kiro：如果只是想尝鲜 spec-first 一体化体验，我会提它一下
+
+AWS 在 2025 年 7 月发布 [Kiro](https://kiro.dev/blog/introducing-kiro/) 时，最鲜明的标签就是 spec-first。
+
+但这里我得先把话说清楚：**Kiro 我已经很久没用了，所以它现在的 Agent 能力到底强不强，我并不想装作自己很了解。**
+
+也就是说，我这里提 Kiro，不是在给它“当前 Agent 能力很强”做背书，而是把它当成一个可以拿来**尝鲜 spec-first / specs-driven 一体化体验**的入口。
+
+### 一个非常具体的例子
+
+Kiro 官方文章里直接给了例子：从一个“Add a review system for products”的 prompt 出发，先生成 requirements，再到 design，再到 tasks 和 hooks。
+
+所以如果一个人现在的需求只是：
+
+- 想先体验一下 spec-first 是怎么回事
+- 不想一上来就自己拼完整工具链
+- 想快速感受“先写规格，再让 Agent 动手”的节奏
+
+那 Kiro 依然可以看看。
+
+但如果要认真、长期、专业地做 specs driven，我现在反而更建议直接上更专业的 Spec 工具，而不是把希望全押在 Kiro 这种一体化产品上。
+
+## OpenSpec：如果想专业、想轻量、想长期演进，我会更推荐它
+
+OpenSpec 的官方首页和仓库都把定位说得很清楚：它是一个轻量 spec-driven framework，而且非常强调 brownfield 场景（见 [openspec.dev](https://openspec.dev/) 和 [GitHub repo](https://github.com/Fission-AI/OpenSpec)）。
+
+这也是为什么我会更偏向把它推荐给“已经有历史项目的人”。
+
+因为真实世界里，很多项目根本不是从零开始，而是一坨历史包袱里一点点演进。这个时候，一个能维护 source of truth、change proposal、tasks 的工具，价值非常高。
+
+## Spec Kit：如果更偏 GitHub-native、想走结构化流程，它也很值得学
+
+GitHub 的 [Spec Kit](https://github.github.io/spec-kit/) 很适合另一类人：喜欢 `/specify -> /plan -> /tasks` 这类更结构化、更流程化的规格流。
+
+所以这三者在我这里的分工其实很清楚：
+
+- 想尝鲜 spec-first 一体化体验：Kiro
+- 想专业、想轻量、想适配历史项目：OpenSpec
+- 想 GitHub-native、想结构化流程：Spec Kit
+
+:::tip[一句很朴素的话]
+SpecDriven 不是玄学，它只是防止需求、设计、约束、验收标准全都死在聊天记录里。
+:::
+
+# 套餐与计费：我真正的省钱方法，不是抠，而是调度
+
+我现在越来越觉得，所谓“AI 太贵”，很多时候问题根本不是贵，而是调度太差。
+
+## 第一类：按请求 / credit 计费，就让每次请求更值钱
+
+这类套餐的核心不是“少发请求”，而是**让一次请求吃到完整上下文，然后跑出更完整结果。**
+
+比如我会先用 OpenSpec 或其它规格流，把任务规划成边界清楚、上下文充分、可以连续执行的长任务，再交给高阶模型去跑。这样单次请求的产出密度通常会高很多。
+
+但这里要明确一点：
+
+截至 2026 年 3 月 11 日，GitHub Copilot 和 Cursor 的计费都已经不适合再用一句“固定多少钱一次”去概括了。GitHub Copilot 现在明显围绕 premium requests / multipliers 在设计（见 [Copilot models & multipliers](https://docs.github.com/copilot/reference/ai-models/supported-models)），Cursor 这边也经历过从 request 到 usage / pricing 的演进。
+
+所以不要迷信任何一个“永远固定单价”的截图。
+
+## 第二类：按 token 计费，就别把上下文当垃圾桶
+
+按 token 计费时，我会强迫自己做几件事：
+
+- 长对话该断就断
+- 开新线程不要犹豫
+- 尽量命中 cache
+- 搜索、归类、初筛这类任务丢给便宜模型
+
+这类产品最烧钱的，往往不是单次回答，而是**被污染的上下文**。
+
+## 第三类：5 小时窗口、日额度、排队额度，就按生产计划排任务
+
+Z.ai 的 [GLM Coding Plan FAQ](https://docs.z.ai/devpack/faq) 其实就是一个很好的例子：它把很多套餐限制都明确成 5 小时窗口配额。
+
+这种模式下，我的建议就很简单：
+
+- 先规划任务，再开跑
+- 不要把所有高价值任务都堆在同一时间段
+- 把顶级模型留给最关键的任务
+- 把大量 subagent 铺量任务塞到高并发、低成本模型上
+
+说白了，别把最贵的模型当随叫随到的外卖员，要像排生产计划一样排它们。
+
+:::warning[成本治理不是后话]
+工具分工、模型分工、上下文治理、额度治理，这些不是项目做大以后才需要考虑的事。
+
+真正重度使用 Agentic Coding，从第一天就该考虑成本结构。
+:::
+
+# 最后给一个更像作者真实习惯的组合方案
+
+如果让我按我自己的使用习惯，给出一套更像“长期可用”的组合，我会这么排。
+
+## 组合一：最稳的通用型
+
+- **GitHub Copilot** 做默认底座
+- **Codex** 做主力 CLI 执行器
+- **CodeRabbit** 做 PR review 打底
+- **OpenSpec** 或 **Spec Kit** 做规格约束
+
+适合：大多数真实工程团队。
+
+## 组合二：页面 / 设计驱动很重的团队
+
+- **Antigravity** 或 **Cursor** 负责高频 UI 迭代
+- **Codex** 或 **Claude Code** 负责复杂实现与命令执行
+- **Figma + React / Next.js 文档能力 + Vercel 能力** 负责上下文补齐
+
+适合：前端密集、设计反馈快、需要边看边改页面的团队。
+
+## 组合三：重度 DIY 玩家
+
+- **OpenCode** 做可改装底盘
+- 用自定义 commands / agent / workflow 叠自己的 harness
+- 再用 **OpenSpec** 防止项目彻底漂成 prompt 工地
+
+适合：喜欢折腾、愿意自己治理成本和噪声的人。
 
 # 小结
 
-这一章的重点不是“谁最强”，而是“谁负责什么”。
+这一章如果只留三句话，我希望是：
 
-当工具边界清晰、入口稳定、冲突可治理时，多工具协作才会真的提效，而不是把复杂度转移给人。
+- **GitHub Copilot 依然是最通用的起点，但不是所有场景的终点。**
+- **Native IDE、CLI、Web 云端、SpecDriven 各有生态位，别混着用。**
+- **我现在真正看重的，已经不是“谁功能最多”，而是谁的岗位最清晰、噪声最低、长期成本最可控。**
+
+AI 编程工具这条赛道，今天看上去像百家争鸣，明天可能又换一轮排位。
+
+但有一条判断标准不会变：**谁能把工具变成岗位，而不是变成玩具，谁就更容易把 Vibe Coding 做成真正的工程能力。**
