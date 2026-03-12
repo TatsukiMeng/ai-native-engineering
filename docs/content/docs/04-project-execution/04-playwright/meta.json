@@ -2,5 +2,8 @@
   "title": "Playwright 执行层",
   "description": "录制、回放与断言",
   "defaultOpen": true,
-  "pages": ["e2e-patterns"]
+  "pages": [
+    "00-overview",
+    "01-e2e-patterns"
+  ]
 }

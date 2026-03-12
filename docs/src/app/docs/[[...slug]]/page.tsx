@@ -14,13 +14,38 @@ import { DocsBreadcrumbMeta } from "@/components/layout/DocsBreadcrumbMeta";
 import { DocsPrevNextNav } from "@/components/layout/DocsPrevNextNav";
 import { LicenseCard } from "@/components/layout/LicenseCard";
 import { gitConfig } from "@/lib/layout.shared";
-import { getPageImage, source } from "@/lib/source";
+import { getCanonicalPageUrl, getPageImage, source } from "@/lib/source";
 import { getMDXComponents } from "@/mdx-components";
 import styles from "./page.module.css";
 
+const aliasSlugs = [
+  ["01-breakthrough"],
+  ["02-reefs"],
+  ["03-project-core"],
+  ["04-project-execution"],
+  ["04-project-execution", "02-mcp"],
+  ["04-project-execution", "04-playwright"],
+  ["05-governance"],
+] as const;
+
+function resolvePageFromSlug(slug?: string[]) {
+  if (!slug || slug.length === 0) {
+    return source.getPage(["00-preface"]);
+  }
+
+  return source.getPage(slug) ?? source.getPage([...slug, "00-overview"]);
+}
+
+function getMarkdownSegments(slugs: string[]) {
+  const last = slugs.at(-1);
+  if (!last) return ["00-preface.mdx"];
+
+  return [...slugs.slice(0, -1), `${last}.mdx`];
+}
+
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const params = await props.params;
-  const page = source.getPage(params.slug);
+  const page = resolvePageFromSlug(params.slug);
   if (!page) notFound();
 
   const pageData = page.data as typeof page.data & {
@@ -34,9 +59,12 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 
   const MDX = pageData.body ?? (await pageData.load?.())?.body;
   if (!MDX) notFound();
-  const markdownUrl = `/llms.mdx/docs/${[...page.slugs, "index.mdx"].join("/")}`;
 
-  const text = (await page.data.getText?.("processed")) || "";
+  const markdownSegments = getMarkdownSegments(page.slugs);
+  const markdownPath = markdownSegments.join("/");
+  const markdownUrl = `/llms.mdx/docs/${markdownPath}`;
+
+  const text = (await pageData.getText?.("processed")) || "";
   const wordCount = text.replace(/\s/g, "").length;
   const readingTime = Math.max(1, Math.ceil(wordCount / 300));
 
@@ -47,20 +75,23 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
     currentIndex >= 0 && currentIndex < pages.length - 1
       ? pages[currentIndex + 1]
       : undefined;
-  const previousItem = previousPage
-    ? { url: previousPage.url, title: previousPage.data.title }
+  const previousItem = previousPage?.data.title
+    ? {
+        url: getCanonicalPageUrl(previousPage.url),
+        title: previousPage.data.title,
+      }
     : undefined;
-  const nextItem = nextPage
-    ? { url: nextPage.url, title: nextPage.data.title }
+  const nextItem = nextPage?.data.title
+    ? { url: getCanonicalPageUrl(nextPage.url), title: nextPage.data.title }
     : undefined;
 
   const sectionItems = page.slugs
     .map((_, index) => {
-      const target = source.getPage(page.slugs.slice(0, index + 1));
+      const target = resolvePageFromSlug(page.slugs.slice(0, index + 1));
       if (!target?.url || !target?.data?.title) return null;
 
       return {
-        url: target.url,
+        url: getCanonicalPageUrl(target.url),
         title: target.data.title,
       };
     })
@@ -71,8 +102,8 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 
   return (
     <DocsPage
-      toc={page.data.toc}
-      full={page.data.full}
+      toc={pageData.toc}
+      full={pageData.full}
       breadcrumb={{ enabled: false }}
       tableOfContentPopover={{ enabled: false }}
       tableOfContent={{ enabled: false }}
@@ -81,7 +112,6 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
     >
       <div className="relative">
         <div className="card-base relative mb-4 mx-auto w-full px-6 pt-6 pb-6 md:px-9">
-          {/* word count and reading time */}
           <div className="mb-3 flex flex-row gap-5 text-muted-foreground transition">
             {wordCount > 0 && (
               <div className="flex flex-row items-center">
@@ -101,7 +131,6 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
             )}
           </div>
 
-          {/* title */}
           <div className="relative z-10">
             <DocsTitle className="mb-3 block w-full font-bold transition md:before:absolute md:before:top-[0.75rem] md:before:left-[-1.125rem] md:before:h-5 md:before:w-1 md:before:rounded-md md:before:bg-fd-primary">
               {page.data.title}
@@ -112,7 +141,6 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
             {page.data.description}
           </DocsDescription>
 
-          {/* metadata buttons */}
           <div className="mt-4 mb-5 flex flex-row items-center justify-between gap-3 border-b border-dashed border-fd-border pb-5">
             <div className="min-w-0">
               <DocsBreadcrumbMeta items={displayItems} />
@@ -121,12 +149,11 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
               <LLMCopyButton markdownUrl={markdownUrl} />
               <ViewOptions
                 markdownUrl={markdownUrl}
-                githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/docs/content/docs/${page.slugs.join("/")}.mdx`}
+                githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/docs/content/docs/${markdownPath}`}
               />
             </div>
           </div>
 
-          {/* markdown content */}
           <DocsBody className={`${styles.customMd} mb-6`}>
             <MDX
               components={getMDXComponents({
@@ -137,9 +164,9 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 
           <div className="pt-6">
             <LicenseCard
-              title={page.data.title}
+              title={pageData.title}
               updatedAt={
-                page.data.lastModified as string | number | Date | undefined
+                pageData.lastModified as string | number | Date | undefined
               }
             />
           </div>
@@ -154,19 +181,26 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 }
 
 export async function generateStaticParams() {
-  return source.generateParams();
+  return [
+    { slug: [] },
+    ...aliasSlugs.map((slug) => ({ slug: [...slug] })),
+    ...source.generateParams(),
+  ];
 }
 
 export async function generateMetadata(
   props: PageProps<"/docs/[[...slug]]">,
 ): Promise<Metadata> {
   const params = await props.params;
-  const page = source.getPage(params.slug);
+  const page = resolvePageFromSlug(params.slug);
   if (!page) notFound();
 
   return {
     title: page.data.title,
     description: page.data.description,
+    alternates: {
+      canonical: getCanonicalPageUrl(page.url),
+    },
     openGraph: {
       images: getPageImage(page).url,
     },

@@ -1,0 +1,12 @@
+{
+  "title": "Part 4 · 实战下半",
+  "description": "自动化增强、跨端落地与联调交付",
+  "defaultOpen": true,
+  "pages": [
+    "00-overview",
+    "01-mcp-practice",
+    "02-mcp",
+    "03-playwright-practice",
+    "04-playwright"
+  ]
+}

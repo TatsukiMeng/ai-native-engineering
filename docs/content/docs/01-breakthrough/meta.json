@@ -1,0 +1,11 @@
+{
+  "title": "Part 1 · 破局",
+  "description": "从范式转移、工具分工到控制面心智",
+  "defaultOpen": true,
+  "pages": [
+    "00-overview",
+    "01-paradigm-shift",
+    "02-tooling-landscape",
+    "03-control-surface"
+  ]
+}

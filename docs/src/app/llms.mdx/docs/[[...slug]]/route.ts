@@ -3,13 +3,24 @@ import { getLLMText, source } from "@/lib/source";
 
 export const revalidate = false;
 
+function getPageSlugFromMarkdownRoute(slug?: string[]) {
+  if (!slug || slug.length === 0) return null;
+
+  const last = slug.at(-1);
+  if (!last) return null;
+
+  return [...slug.slice(0, -1), last.replace(/\.mdx$/, "")];
+}
+
 export async function GET(
   _req: Request,
   { params }: RouteContext<"/llms.mdx/docs/[[...slug]]">,
 ) {
   const { slug } = await params;
-  // remove the appended "index.mdx"
-  const page = source.getPage(slug?.slice(0, -1));
+  const pageSlug = getPageSlugFromMarkdownRoute(slug);
+  if (!pageSlug) notFound();
+
+  const page = source.getPage(pageSlug);
   if (!page) notFound();
 
   return new Response(await getLLMText(page), {
@@ -21,6 +32,6 @@ export async function GET(
 
 export function generateStaticParams() {
   return source.getPages().map((page) => ({
-    slug: [...page.slugs, "index.mdx"],
+    slug: [...page.slugs.slice(0, -1), `${page.slugs.at(-1)}.mdx`],
   }));
 }

@@ -1,4 +1,11 @@
 {
   "title": "AI 原生工程",
-  "pages": ["index", "level-1", "level-2", "level-3", "level-4", "level-5"]
+  "pages": [
+    "00-preface",
+    "01-breakthrough",
+    "02-reefs",
+    "03-project-core",
+    "04-project-execution",
+    "05-governance"
+  ]
 }

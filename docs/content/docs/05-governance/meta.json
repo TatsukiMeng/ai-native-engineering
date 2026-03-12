@@ -1,0 +1,10 @@
+{
+  "title": "Part 5 · 终局",
+  "description": "治理、Swarm 与生产系统升级",
+  "defaultOpen": true,
+  "pages": [
+    "00-overview",
+    "01-swarm-orchestration",
+    "02-cost-governance"
+  ]
+}

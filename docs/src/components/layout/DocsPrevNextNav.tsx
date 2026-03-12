@@ -21,7 +21,7 @@ export function DocsPrevNextNav({ previous, next }: DocsPrevNextNavProps) {
         <Link
           href={previous.url}
           className="w-full overflow-hidden"
-          aria-label={`上一篇文章：${previous.title}`}
+          aria-label={`上一章：${previous.title}`}
         >
           <span
             className={buttonStyles({
@@ -46,7 +46,7 @@ export function DocsPrevNextNav({ previous, next }: DocsPrevNextNavProps) {
         <Link
           href={next.url}
           className="w-full overflow-hidden"
-          aria-label={`下一篇文章：${next.title}`}
+          aria-label={`下一章：${next.title}`}
         >
           <span
             className={buttonStyles({

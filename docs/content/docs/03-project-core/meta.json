@@ -1,0 +1,10 @@
+{
+  "title": "Part 3 · 实战上半",
+  "description": "项目起盘、系统设计与核心链路落地",
+  "defaultOpen": true,
+  "pages": [
+    "00-overview",
+    "01-backend-workflow",
+    "02-frontend-workflow"
+  ]
+}
