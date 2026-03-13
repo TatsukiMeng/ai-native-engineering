@@ -1,10 +1,13 @@
 {
   "title": "Part 5 · 终局",
-  "description": "治理、Swarm 与生产系统升级",
+  "description": "把项目从做完升级到可治理、可编排、可长期运行",
   "defaultOpen": true,
   "pages": [
     "00-overview",
-    "01-swarm-orchestration",
-    "02-cost-governance"
+    "01-cost-governance",
+    "02-swarm-orchestration",
+    "03-shared-memory-context",
+    "04-antifragile-design",
+    "05-architect-upgrade"
   ]
 }

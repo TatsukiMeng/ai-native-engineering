@@ -1,11 +1,12 @@
 {
   "title": "Part 1 · 破局",
-  "description": "从范式转移、工具分工到控制面心智",
+  "description": "从范式转移、工具分工到控制面心智，把全书主线先亮出来",
   "defaultOpen": true,
   "pages": [
     "00-overview",
     "01-paradigm-shift",
     "02-tooling-landscape",
-    "03-control-surface"
+    "03-control-surface",
+    "04-main-project"
   ]
 }

@@ -1,10 +1,12 @@
 {
   "title": "Part 3 · 实战上半",
-  "description": "项目起盘、系统设计与核心链路落地",
+  "description": "先收敛需求，再立住系统设计、后端与前端主线",
   "defaultOpen": true,
   "pages": [
     "00-overview",
-    "01-backend-workflow",
-    "02-frontend-workflow"
+    "01-project-kickoff",
+    "02-system-design",
+    "03-backend-mainline",
+    "04-frontend-mainline"
   ]
 }
