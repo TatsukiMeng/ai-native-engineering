@@ -3,9 +3,9 @@
   "pages": [
     "00-preface",
     "01-breakthrough",
-    "02-reefs",
-    "03-project-core",
-    "04-project-execution",
-    "05-governance"
+    "02-foundation",
+    "03-development",
+    "04-delivery",
+    "05-scale"
   ]
 }

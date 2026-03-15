@@ -1,0 +1,13 @@
+{
+  "title": "Part 2 · 定盘",
+  "description": "从 PRD、技术栈、架构到仓库规范，把项目底板真正定下来",
+  "defaultOpen": true,
+  "pages": [
+    "00-overview",
+    "01-requirement-convergence",
+    "02-tech-stack-decision",
+    "03-workspace-bootstrap",
+    "04-system-design",
+    "05-spec-rules-skills"
+  ]
+}

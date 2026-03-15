@@ -1,0 +1,12 @@
+{
+  "title": "Part 4 · 交付",
+  "description": "让项目真的跑起来、验起来、发出去，而不是停在代码写完",
+  "defaultOpen": true,
+  "pages": [
+    "00-overview",
+    "01-cli-harness",
+    "02-playwright-multimodal",
+    "03-cross-platform-host",
+    "04-integration-release"
+  ]
+}

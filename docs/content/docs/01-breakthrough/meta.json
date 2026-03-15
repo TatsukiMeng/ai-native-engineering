@@ -1,12 +1,13 @@
 {
   "title": "Part 1 · 破局",
-  "description": "从范式转移、工具分工到控制面心智，把全书主线先亮出来",
+  "description": "先把旧脑回路掰过来，再把项目主线正式亮出来",
   "defaultOpen": true,
   "pages": [
     "00-overview",
     "01-paradigm-shift",
     "02-tooling-landscape",
     "03-control-surface",
-    "04-main-project"
+    "04-ai-product-judgment",
+    "05-main-project"
   ]
 }

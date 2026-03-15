@@ -1,0 +1,13 @@
+{
+  "title": "Part 5 · 放大",
+  "description": "把单项目方法放大成可治理、可编排、可长期运行的系统",
+  "defaultOpen": true,
+  "pages": [
+    "00-overview",
+    "01-cost-governance",
+    "02-shared-memory-context",
+    "03-swarm-orchestration",
+    "04-antifragile-design",
+    "05-role-upgrade"
+  ]
+}

@@ -20,12 +20,10 @@ import styles from "./page.module.css";
 
 const aliasSlugs = [
   ["01-breakthrough"],
-  ["02-reefs"],
-  ["03-project-core"],
-  ["04-project-execution"],
-  ["04-project-execution", "02-mcp"],
-  ["04-project-execution", "04-playwright"],
-  ["05-governance"],
+  ["02-foundation"],
+  ["03-development"],
+  ["04-delivery"],
+  ["05-scale"],
 ] as const;
 
 function resolvePageFromSlug(slug?: string[]) {

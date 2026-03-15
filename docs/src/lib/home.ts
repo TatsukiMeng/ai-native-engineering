@@ -35,24 +35,24 @@ const partDefinitions: PartDefinition[] = [
     tags: ["范式转移", "工具判断", "控制面轮廓"],
   },
   {
-    slug: "02-reefs",
-    highlight: "先演练它会怎么死",
-    tags: ["调试失控", "测试自洽", "规则与兜底"],
+    slug: "02-foundation",
+    highlight: "从 PRD 把项目盘起来",
+    tags: ["需求收敛", "技术栈与架构", "仓库与规范"],
   },
   {
-    slug: "03-project-core",
-    highlight: "项目主线正式开工",
-    tags: ["需求收敛", "架构设计", "前后端主链"],
+    slug: "03-development",
+    highlight: "主干开发正式开工",
+    tags: ["任务拆解", "前后端主链", "开发护栏"],
   },
   {
-    slug: "04-project-execution",
-    highlight: "给项目装上手和眼",
-    tags: ["CLI / Harness", "MCP", "Playwright"],
+    slug: "04-delivery",
+    highlight: "让项目真正跑通交付",
+    tags: ["CLI / Harness", "Playwright", "联调发布"],
   },
   {
-    slug: "05-governance",
-    highlight: "从能做完到能长期跑",
-    tags: ["成本治理", "Swarm 编排", "Context 治理"],
+    slug: "05-scale",
+    highlight: "从单项目放大到系统",
+    tags: ["成本治理", "Swarm 编排", "共享记忆"],
   },
 ];
 
@@ -65,10 +65,10 @@ export const bookHighlights = [
   {
     title: "项目不是例子，而是全书主线",
     description:
-      "这本书不是每章换一个 demo。项目会从 Part 1 被抛出来，在 Part 2 先预演翻车，再在 Part 3 和 Part 4 真正做起来，最后在 Part 5 进入治理。",
+      "这本书不是每章换一个 demo。Part 1 先把旧脑回路掰过来并亮出主线项目，Part 2 开始定盘，Part 3 进入开发，Part 4 解决交付闭环，Part 5 再把方法放大成可治理系统。",
   },
   {
-    title: "真正要学的是控制面",
+    title: "真正要学的是项目控制面",
     description:
       "任务怎么拆、Context 怎么喂、Rules 怎么写、Skill 怎么沉淀、失败了怎么回滚，这些控制面能力才是把 AI 用成工程系统的关键。",
   },
@@ -82,7 +82,7 @@ export const readerTypes = [
 
 export const learningOutcomes = [
   "理解从 Prompt 到 Context、再到 Agent Harness 的分层，不再把所有问题都粗暴归因成“模型不够强”。",
-  "会把任务拆解、规则约束、验证链路、回滚兜底组织成一条可运行的工程工作流。",
+  "会把需求收敛、规则约束、验证链路、回滚兜底组织成一条可运行的工程工作流。",
   "能把 AI 从一个时灵时不灵的外挂，升级成可复用、可控、可治理的生产系统。",
 ] as const;
 
@@ -95,15 +95,15 @@ export const readingSteps = [
   },
   {
     step: "02",
-    title: "进入 Part 2，先看项目会怎么翻车",
+    title: "进入 Part 2，把项目真正定盘",
     description:
-      "别急着开工，先把黑盒面条代码、测试自洽、上下文污染和调试失控这些坑看明白。",
+      "从 PRD、范围、技术栈、仓库、架构和规范开始，把项目先盘成一个可以稳定推进的状态。",
   },
   {
     step: "03",
-    title: "再进入 Part 3 和 Part 4 把项目做起来",
+    title: "再进入 Part 3 和 Part 4 把项目做完并交付",
     description:
-      "从需求、架构、数据库、前后端主链，到 CLI、MCP、Playwright，把同一个项目真正推进到可交付。",
+      "从任务拆解、前后端主干、开发护栏，到 CLI、Playwright、跨端宿主和联调发布，把同一个项目真正推进到可交付。",
   },
   {
     step: "04",

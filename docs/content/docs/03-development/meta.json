@@ -1,0 +1,13 @@
+{
+  "title": "Part 3 · 开发",
+  "description": "让项目主干在真实工作流里长出来，开发、护栏和 Context 输入一起推进",
+  "defaultOpen": true,
+  "pages": [
+    "00-overview",
+    "01-task-breakdown",
+    "02-backend-mainline",
+    "03-frontend-mainline",
+    "04-development-guardrails",
+    "05-context-inputs"
+  ]
+}

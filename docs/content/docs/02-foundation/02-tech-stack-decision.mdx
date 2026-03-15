@@ -1,0 +1,317 @@
+---
+title: 技术栈定盘：桌面、移动、Web、API、Worker 到底怎么拆
+description: 把多端、服务端、权限和数据边界一次讲清楚
+icon: Cpu
+---
+
+# 这一页为什么单独拆出来
+
+上一页先把主线项目摆上了桌面。
+
+但如果我在那一页里顺手把桌面端、移动端、Web 端、服务端、数据层、权限边界、验证门槛全都展开，正文很快就会变成一份过长的技术选型说明书。
+
+所以技术栈底板我单独拆成这一页。
+
+这页不负责写实现细节，也不抢 Part 3 的活；它只负责把一件事钉死：**这条主线项目到底应该站在什么底板上，为什么是这套底板，而不是另一套听起来更“统一”的方案。**
+
+# 先有约束，再有底板
+
+我不会先列一串框架名，再给它们找理由。
+
+真正决定底板的，是这条主线必须同时扛住的几类约束：
+
+- 桌面端要拿系统级能力，宿主边界要清楚
+- 移动端要碰通知、位置、健康数据、后台任务和安全存储
+- Web 端要提供低门槛可达性，但不承诺深度宿主能力
+- 服务端要同时扛住实时链路、异步任务、隐私边界和对象存储
+
+顺着这些约束往下推，底板自然会收束成下面这套组合。
+
+:::important[一句话结论]
+这条主线项目的底板是：
+
+- 桌面端：`Tauri 2 + React + TypeScript`
+- 移动端：`Expo + React Native + Expo Modules API`
+- Web 端：`PWA`，但只做轻量陪伴端
+- 服务端：`NestJS + Fastify + PostgreSQL + Redis + BullMQ + S3-compatible storage`
+- 共享策略：只共享 `contracts / domain / crypto / ui-tokens`，不强追全平台一套 UI
+:::
+
+# 先说结论：这条主线不迷信“一套代码跑满全平台”
+
+很多跨端方案一开始最诱人的地方，都是“能不能多复用一点代码”。
+
+但 `Our100` 这种项目，真正昂贵的地方不是多写几层视图，而是：
+
+- 桌面端要碰系统级能力
+- 移动端要碰通知、位置、健康数据、后台任务
+- Web 端要承担低门槛访问和基础陪伴
+- 服务端要同时扛住实时链路、异步任务、隐私边界和对象存储
+
+所以如果为了“统一”而强行把三端都压成一套宿主方案，最后大概率不是更省，而是更痛苦。
+
+我更认同的拆法是：
+
+| 层面 | 推荐方案 | 定位 |
+|---|---|---|
+| 桌面端 | `Tauri 2 + React + TypeScript + Vite` | 完整体验主战场，负责系统能力接入 |
+| 移动端 | `Expo + React Native + Expo Router + Expo Modules API` | 完整体验主战场，负责成熟原生生态 |
+| Web 端 | `React + Vite + PWA` | 轻量陪伴端，负责安装、查看、基础互动 |
+| API 层 | `NestJS + Fastify` | 统一业务入口，对外提供 `REST + WebSocket events` |
+| Worker 层 | `BullMQ worker + Agent runtime` | 异步任务、AI 任务、通知和编排 |
+| 数据层 | `PostgreSQL + Redis + MinIO` | 结构化数据、短时态状态、对象存储 |
+
+这套拆法的核心不是“平台越多越炫”，而是：**每一层都承认自己最擅长解决什么问题。**
+
+# 客户端为什么要拆成三条线，而不是硬凹一条线
+
+## 桌面端：Tauri 是系统能力这一侧最稳的底板
+
+桌面端这一条，底板就是 `Tauri 2 + React + TypeScript`。
+
+`Our100` 需要真正的宿主能力，比如活跃 App、输入强度、托盘、自启动、系统通知、安全存储。这类能力放在 [Tauri 2](https://v2.tauri.app/blog/tauri-20/) 上是顺的，因为它本来就适合“Web 前端 + Rust 系统能力”这种组合，而且它的 [capabilities 权限模型](https://v2.tauri.app/security/capabilities/) 也很适合后面拿来讲宿主边界。
+
+所以桌面端我会直接定成：
+
+- `Tauri 2 + React + TypeScript + Vite`
+- 状态层用 `TanStack Query + Zustand`
+- 样式层走 `Tailwind CSS`
+- 系统级能力通过 `Rust plugin` 接：活跃 App、输入强度、托盘、自启动、系统通知、安全存储
+
+这条线的价值不是“跨端统一”，而是它真的能把桌面端该拿的能力拿到手。
+
+## 移动端：Expo 是当前最稳的主方案
+
+移动端这一条，我会把 `Expo + React Native + Expo Modules API` 放在主方案位置。
+
+我不会把 `Tauri Mobile` 放在主方案位置，不是因为它完全不能做，而是因为它对 `Our100` 来说，赌注有点太高。
+
+官方自己在 [Tauri 2.0 Stable Release](https://v2.tauri.app/blog/tauri-20/) 里就写得很直白：
+
+- 他们对当前移动端开发体验“还不完全满意”
+- 移动端并不是所有官方插件都已支持
+
+而且 [移动端插件开发文档](https://v2.tauri.app/develop/plugins/develop-mobile/) 也说明得很明确：真到移动端深水区，还是要写 `Swift / Kotlin` 插件。
+
+问题就在这里。`Our100` 的移动端不是一个普通表单 App，它要碰的是：
+
+- 通知
+- 位置
+- 触感
+- `HealthKit / Health Connect`
+- 后台任务
+- 安全存储
+
+这类能力比“能不能多复用一点 Web 视图”更重要。
+
+所以我更愿意把移动端定成：
+
+- `Expo + React Native + Expo Router + TypeScript`
+- 状态层同样用 `TanStack Query + Zustand`
+- 官方能力优先用：
+  - [Expo Notifications](https://docs.expo.dev/versions/latest/sdk/notifications/)
+  - [Expo Location](https://docs.expo.dev/versions/latest/sdk/location/)
+  - [Expo SQLite](https://docs.expo.dev/versions/latest/sdk/sqlite/)
+  - [Expo SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
+  - `expo-task-manager`
+  - `expo-haptics`
+- 真正碰到健康数据、后台原生能力时，用 [Expo Modules API](https://docs.expo.dev/modules/get-started/) 写本地 `Swift / Kotlin` 模块
+
+:::warning[为什么不是“因为 Expo Go 很方便”]
+我推荐 Expo，不是因为可以靠 `Expo Go` 糊开发体验，而是因为它现在已经把 `development build / prebuild / config plugin / Modules API` 这一整套工作流铺得比较成熟。
+
+对 `Our100` 这种“JS/TS 为主，但关键能力必须按需下沉原生”的产品，这比“勉强统一宿主方案”更值钱。
+:::
+
+## Web 端：PWA 是轻量陪伴端，不承担全功能承诺
+
+Web 端我不砍，但我会明确降级它的定位。
+
+它存在的意义不是变成“桌面端和移动端的网页平替”，而是：
+
+- 让用户可以低门槛进入
+- 让项目保留安装和离线缓存能力
+- 承担基础查看、基础互动、轻量配置这类需求
+
+也就是说，Web 端是 `React + Vite + PWA`，但不承诺后台位置、健康数据、深度宿主能力。
+
+这条线最重要的一条纪律是：**不支持的能力要显式降级，不要假装全都有。**
+
+# 服务端为什么采用 TS-first，但栈要收得更稳
+
+`Our100` 的服务端，我建议采用 TypeScript 体系。
+
+原因很简单：桌面端、移动端、Web 端、控制面、测试和自动化链路，本来就会大量用到 TypeScript。这个时候服务端采用 TS-first，不是偷懒，而是让团队的上下文切换更少。
+
+但我不建议把栈写成“能塞的都塞”。
+
+## API 层：NestJS 负责主框架，Fastify 负责适配器
+
+后端主框架我还是选 `NestJS`，因为模块化、依赖注入、工程组织、多人协作这些点，对 `Our100` 这种主线项目还是够稳。
+
+但网关层我会直接配成 `Fastify adapter`，让默认底座更轻一点。
+
+对外接口口径统一是：
+
+- `REST` 负责认证、配对、心愿、隐私设置、历史查询、上传流程
+- `WebSocket events` 负责状态同步、消息、触感、共享画板、在线状态
+
+我这里不建议现在走 GraphQL，也不建议全量押 `tRPC`。`Our100` 后面会有多端、回放、联调、自动化验证、SDK 生成这些需求，接口契约最好保持稳定和可审计。
+
+## 契约层：OpenAPI 是主合同，不允许三端各写一份类型
+
+真正容易烂掉的，从来不是“接口能不能调通”，而是三端自己手写 DTO，最后一点点漂移。
+
+所以我更想把契约层钉死成：
+
+- `OpenAPI` 作为标准接口合同
+- 由 Nest 自动生成 schema
+- 客户端统一从合同生成类型和 SDK
+
+这样桌面端、移动端、Web 端共享的是一份合同，不是三份靠意念同步的类型定义。
+
+## 数据层：PostgreSQL 是主库，ORM 层更适合 Drizzle
+
+数据库主库就是 `PostgreSQL`，这一点没什么悬念。
+
+但 ORM 层我不建议走 `TypeORM`。我更倾向于：
+
+- `Drizzle ORM + drizzle-kit`
+
+原因也很直接：
+
+- 它更贴近 SQL，边界更清楚
+- 生成的抽象更薄，不太容易把查询意图藏起来
+- 对 AI 协作更友好，因为“看起来像 SQL”比“读一坨魔法装饰器”更容易对齐
+- 官方本身也有 [Expo SQLite 的接法](https://orm.drizzle.team/docs/connect-expo-sqlite)，后面移动端做本地缓存层时更顺
+
+## Redis、BullMQ 和对象存储：边界要说清楚
+
+这三样我都会保留，但我会把边界说得更死一点：
+
+- `Redis` 负责短时态状态、会话、冷却和实时辅助状态
+- `BullMQ` 负责异步任务、延迟任务、重试、死信和 AI/规则任务调度
+- 对象存储层先用 `MinIO`，但接口抽象成 `S3-compatible storage adapter`
+
+这样后面如果从私有化环境切到 `AWS S3` 或 `Cloudflare R2`，迁移成本会小很多。
+
+## Agent 不要直接塞进 API 主进程
+
+这件事我想单独强调一下。
+
+`Environment Agent`、`Care Agent` 这类东西，不应该直接塞进 API 主进程里。它们应该拆成独立 `worker`，挂在 `BullMQ` 背后。
+
+不然最后很容易出现这种局面：
+
+- 在线请求和异步任务互相抢资源
+- AI 任务把接口延迟拖爆
+- 重试、审计、死信、人工接管没有清晰边界
+
+把 worker 单独拆出去，后面 Part 4 和 Part 5 讲执行闭环、治理、Swarm 时也更顺。
+
+# 本地存储、安全和权限边界要从第一天就定严
+
+`Our100` 不是那种“先把功能做出来，隐私以后再补”的项目。
+
+如果技术栈底板从一开始没把权限和密钥边界定严，后面越做越难补。
+
+## 本地存储怎么分
+
+- 移动端密钥和 token：`expo-secure-store`
+- 移动端结构化本地缓存：`expo-sqlite`
+- 桌面端密钥：系统 `Keychain / Credential Store`，通过 Rust 层接入
+- 桌面端本地缓存：`SQLite`
+
+## 加密怎么分
+
+我更建议直接按“客户端加密、对象存储只落密文”来设计。
+
+换句话说：
+
+- 服务端可以做鉴权和密文转发
+- 但不要把“服务端加密”误写成“端到端加密”
+- 真正的敏感媒体、附件、画板快照，默认按密文对象处理
+
+## 权限怎么分
+
+后台位置和健康数据这两类能力，必须当一等公民看。
+
+[Android 官方文档](https://developer.android.com/develop/sensors-and-location/location/background) 对后台位置权限说得很清楚：这不是一个可以随手强开的权限。  
+[Health Connect 官方文档](https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started) 也明确要求走最小权限和正式接入流程。  
+[Apple HealthKit 授权文档](https://developer.apple.com/documentation/healthkit/authorizing-access-to-health-data) 和 [`NSHealthShareUsageDescription`](https://developer.apple.com/documentation/BundleResources/Information-Property-List/NSHealthShareUsageDescription) 也都强调了细粒度授权和用途说明。  
+再往上一层，[App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/) 也决定了这东西不能乱来。
+
+所以我会直接把规则定成：
+
+- 后台位置默认做成显式开启的增强能力
+- 健康数据默认按最小权限申请
+- 权限说明、用途说明、降级路径一开始就和产品设计一起做
+
+# 代码共享要有边界，别把 monorepo 写成一锅粥
+
+我推荐 `pnpm workspace + Turborepo`，但重点不是“用了 monorepo 就高级”，而是共享边界要克制。
+
+我更认同的结构大概是：
+
+```text
+apps/
+  desktop/   # Tauri + React
+  mobile/    # Expo + React Native
+  web/       # PWA
+  api/       # NestJS
+  worker/    # BullMQ / Agent worker
+packages/
+  contracts/ # OpenAPI 生成物与共享类型
+  domain/    # 业务模型、规则、状态机
+  crypto/    # 客户端加密工具
+  ui-tokens/ # 设计 token，不放平台耦合组件
+```
+
+这里最重要的一条纪律是：
+
+**共享值得共享的东西，不共享那些会把平台边界搅乱的东西。**
+
+所以我更愿意共享：
+
+- `contracts`
+- `domain`
+- `crypto`
+- `ui-tokens`
+
+但不建议为了“看起来更统一”，再引入一层重跨端 UI 框架，硬追桌面、移动、Web 完全同构。
+
+# 先过这些硬门槛，再说这套底板是不是成立
+
+技术栈写在纸上都好看，真正有用的是先看它能不能过硬门槛。
+
+## 移动端先过 5 个硬门槛
+
+- 后台位置：前台、后台、锁屏后三种状态都要稳定；如果做不到，就降级成“非持续追踪 + 事件触发”
+- 推送：前台、后台、终止态都要打通；开发期可以先接 Expo Push，但正式版建议按 [Expo 官方自定义推送方案](https://docs.expo.dev/push-notifications/sending-notifications-custom/) 直连 `FCM / APNs`
+- 触感：iOS / Android 的触感反馈要做到差异可接受
+- 健康数据：`HealthKit / Health Connect` 最小读权限要打通
+- 本地安全：token、配对密钥、加密材料不能明文落盘
+
+## 其他三条线的最低验证线
+
+- 桌面端：活跃 App、输入强度、托盘、自启动、安全存储、自动更新链路可验证
+- 服务端：断网重连后的状态恢复、Redis 扩容一致性、BullMQ 重试/死信语义、密文上传链路可验证
+- Web/PWA：安装、离线缓存、基础查看、基础互动可用；不支持的能力要显式降级
+
+# 这页故意不往下写什么
+
+这页虽然比正文更细，但它还是刻意不往下写三件事：
+
+- 不提前进入表结构、接口细节、模块拆分和目录设计
+- 不把技术选型建议伪装成“已经实现完毕”的事实
+- 不把所有风险都归咎于框架，很多风险本质上还是产品边界和权限边界
+
+换句话说，这页的任务不是“开始实现”，而是把底板钉牢。
+
+# 如果这一页最后只留下 5 句话
+
+- 桌面端底板是 `Tauri`，因为它真的适合拿系统级能力
+- 移动端主方案是 `Expo / React Native`，因为这条主线更需要成熟原生生态，而不是勉强统一宿主
+- Web 端定位是 `PWA` 轻量陪伴端，不承担全功能承诺
+- 服务端采用 TS-first，但要把契约、任务执行、数据边界和对象存储分清楚
+- 真正值得共享的是 `contracts / domain / crypto / ui-tokens`，不是把所有 UI 都硬揉成一份

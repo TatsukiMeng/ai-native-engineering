@@ -15,10 +15,10 @@ import { withContentDelay } from "./motion";
 
 const partIcons: Record<string, LucideIcon> = {
   "01-breakthrough": Sparkles,
-  "02-reefs": ShieldCheck,
-  "03-project-core": Bot,
-  "04-project-execution": Workflow,
-  "05-governance": Network,
+  "02-foundation": ShieldCheck,
+  "03-development": Bot,
+  "04-delivery": Workflow,
+  "05-scale": Network,
 };
 
 type HomePartGridProps = {
