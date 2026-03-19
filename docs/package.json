@@ -4,8 +4,11 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "build:e2e": "NEXT_FONT_GOOGLE_MOCKED_RESPONSES=$PWD/scripts/next-font-google-mocks.cjs GITHUB_REPOSITORY=TatsukiMeng/ai-native-engineering next build --debug-build-paths 'src/app/e2e/copy-markdown/page.tsx,src/app/e2e/copy-markdown/source.mdx/route.ts'",
     "dev": "next dev",
     "start": "serve out",
+    "start:e2e": "node ./scripts/serve-export-for-playwright.mjs",
+    "test:e2e": "playwright test",
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
     "postinstall": "fumadocs-mdx",
     "lint": "biome check",
@@ -26,6 +29,8 @@
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.4",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.2.1",
     "@types/mdx": "^2.0.13",
     "@types/node": "^25.3.1",
@@ -33,8 +38,8 @@
     "@types/react-dom": "^19.2.3",
     "postcss": "^8.5.6",
     "serve": "^14.2.5",
+    "serve-handler": "^6.1.7",
     "tailwindcss": "^4.2.1",
-    "typescript": "^5.9.3",
-    "@biomejs/biome": "^2.4.4"
+    "typescript": "^5.9.3"
   }
 }

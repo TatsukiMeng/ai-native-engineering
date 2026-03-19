@@ -13,6 +13,7 @@ import { Comments } from "@/components/Giscus";
 import { DocsBreadcrumbMeta } from "@/components/layout/DocsBreadcrumbMeta";
 import { DocsPrevNextNav } from "@/components/layout/DocsPrevNextNav";
 import { LicenseCard } from "@/components/layout/LicenseCard";
+import { withDocsBasePath } from "@/lib/docs-base-path";
 import { gitConfig } from "@/lib/layout.shared";
 import { getCanonicalPageUrl, getPageImage, source } from "@/lib/source";
 import { getMDXComponents } from "@/mdx-components";
@@ -64,7 +65,7 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 
   const markdownSegments = getMarkdownSegments(page.slugs);
   const markdownPath = markdownSegments.join("/");
-  const markdownUrl = `/llms.mdx/docs/${markdownPath}`;
+  const markdownUrl = withDocsBasePath(`/llms.mdx/docs/${markdownPath}`);
 
   const text = (await pageData.getText?.("processed")) || "";
   const wordCount = text.replace(/\s/g, "").length;
