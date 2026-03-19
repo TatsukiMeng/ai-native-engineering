@@ -13,6 +13,7 @@ import { Comments } from "@/components/Giscus";
 import { DocsBreadcrumbMeta } from "@/components/layout/DocsBreadcrumbMeta";
 import { DocsPrevNextNav } from "@/components/layout/DocsPrevNextNav";
 import { LicenseCard } from "@/components/layout/LicenseCard";
+import { withDocsBasePath } from "@/lib/docs-base-path";
 import { gitConfig } from "@/lib/layout.shared";
 import { getCanonicalPageUrl, getPageImage, source } from "@/lib/source";
 import { getMDXComponents } from "@/mdx-components";
@@ -45,18 +46,6 @@ function getMarkdownSegments(slugs: string[]) {
   return [...slugs.slice(0, -1), `${last}.mdx`];
 }
 
-function getDocsBasePath() {
-  if (process.env.NODE_ENV !== "production") return "";
-
-  const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1];
-  const configuredBasePath =
-    process.env.NEXT_PUBLIC_BASE_PATH ?? (repoName ? `/${repoName}` : "");
-
-  if (configuredBasePath === "/") return "";
-
-  return configuredBasePath.replace(/\/$/, "");
-}
-
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const params = await props.params;
   const page = resolvePageFromSlug(params.slug);
@@ -74,10 +63,9 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const MDX = pageData.body ?? (await pageData.load?.())?.body;
   if (!MDX) notFound();
 
-  const docsBasePath = getDocsBasePath();
   const markdownSegments = getMarkdownSegments(page.slugs);
   const markdownPath = markdownSegments.join("/");
-  const markdownUrl = `${docsBasePath}/llms.mdx/docs/${markdownPath}`;
+  const markdownUrl = withDocsBasePath(`/llms.mdx/docs/${markdownPath}`);
 
   const text = (await pageData.getText?.("processed")) || "";
   const wordCount = text.replace(/\s/g, "").length;
