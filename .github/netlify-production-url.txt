@@ -1,0 +1,3 @@
+# Netlify production site root URL
+# Priority (high -> low): workflow_dispatch input > repo variable NETLIFY_PRODUCTION_URL > this file
+https://ephemeral-figolla-9453b5.netlify.app

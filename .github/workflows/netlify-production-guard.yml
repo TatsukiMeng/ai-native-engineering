@@ -1,0 +1,207 @@
+name: Netlify Production Guard
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - ".github/workflows/netlify-production-guard.yml"
+      - ".github/netlify-production-url.txt"
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Netlify production URL (site root, overrides config file)"
+        required: false
+        default: ""
+      create_issue:
+        description: "Create or update issue when smoke tests fail"
+        required: false
+        default: "true"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: netlify-production-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      CREATE_ISSUE: ${{ github.event.inputs.create_issue || 'true' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve target URL
+        run: |
+          set -euo pipefail
+
+          manual_input="${{ github.event.inputs.target_url || '' }}"
+          repo_var="${{ vars.NETLIFY_PRODUCTION_URL || '' }}"
+          file_path=".github/netlify-production-url.txt"
+
+          file_url=""
+          if [ -f "${file_path}" ]; then
+            file_url="$(grep -v '^[[:space:]]*#' "${file_path}" | sed '/^[[:space:]]*$/d' | head -n 1 | tr -d '\r' || true)"
+          fi
+
+          target="${manual_input:-${repo_var:-${file_url:-}}}"
+
+          if [ -z "${target}" ]; then
+            echo "::warning::No target URL configured. Skipping smoke tests."
+            echo "::warning::Set one of: workflow input target_url, repository variable NETLIFY_PRODUCTION_URL, or .github/netlify-production-url.txt"
+            echo "SKIP_SMOKE=true" >> "${GITHUB_ENV}"
+            exit 0
+          fi
+
+          normalized="${target%/}"
+          if [[ ! "${normalized}" =~ ^https?:// ]]; then
+            echo "::error::TARGET_URL must start with http:// or https:// (current: ${normalized})"
+            exit 1
+          fi
+
+          echo "TARGET_URL=${normalized}" >> "${GITHUB_ENV}"
+          echo "SKIP_SMOKE=false" >> "${GITHUB_ENV}"
+          echo "Using TARGET_URL=${normalized}"
+
+      - name: Setup Bun
+        if: env.SKIP_SMOKE != 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Wait for deployment readiness
+        if: env.SKIP_SMOKE != 'true'
+        run: |
+          set -euo pipefail
+          target="${TARGET_URL}/docs/02-foundation"
+
+          for attempt in $(seq 1 40); do
+            status="$(curl -sS -o /tmp/netlify-smoke.html -w '%{http_code}' "${target}" || echo 000)"
+            echo "Attempt ${attempt}/40 => ${status}"
+
+            if [ "${status}" = "200" ]; then
+              echo "Deployment is ready at ${target}"
+              exit 0
+            fi
+
+            sleep 15
+          done
+
+          echo "::error::Deployment was not ready within 10 minutes: ${target}"
+          exit 1
+
+      - name: Install deps (docs)
+        if: env.SKIP_SMOKE != 'true'
+        working-directory: docs
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browser
+        if: env.SKIP_SMOKE != 'true'
+        working-directory: docs
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run production smoke tests
+        if: env.SKIP_SMOKE != 'true'
+        working-directory: docs
+        env:
+          E2E_BASE_URL: ${{ env.TARGET_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ env.TARGET_URL }}
+        run: bunx playwright test tests/e2e/production-smoke.spec.ts --config=playwright.config.ts
+
+      - name: Upload Playwright artifacts
+        if: always() && env.SKIP_SMOKE != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-netlify-smoke-${{ github.run_id }}
+          path: |
+            docs/playwright-report
+            docs/test-results
+          if-no-files-found: warn
+
+      - name: Create or update failure issue
+        if: failure() && env.SKIP_SMOKE != 'true' && env.CREATE_ISSUE == 'true'
+        uses: actions/github-script@v7
+        env:
+          TARGET_URL: ${{ env.TARGET_URL }}
+        with:
+          script: |
+            const marker = '<!-- netlify-production-guard -->';
+            const targetUrl = process.env.TARGET_URL;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = `ci: Netlify 线上巡检失败 (${targetUrl})`;
+            const body = [
+              marker,
+              `## 失败快照`,
+              `- 目标站点: ${targetUrl}`,
+              `- 失败工作流: ${runUrl}`,
+              `- 分支: ${context.ref}`,
+              `- Commit: ${context.sha}`,
+              '',
+              `## 处理建议`,
+              `1. 打开当前 run 的 artifact，优先看 Playwright trace 和截图。`,
+              `2. 在本地复现: \`cd docs && E2E_BASE_URL=${targetUrl} bunx playwright test tests/e2e/production-smoke.spec.ts --config=playwright.config.ts\``,
+              `3. 修复后重新部署，再手动重跑 \`Netlify Production Guard\`。`,
+              '',
+              `## AI 自修复入口`,
+              `- 若已配置 \`AI_AUTOFIX_WEBHOOK\`，本次失败会自动触发外部 agent。`,
+              `- 未配置时，本 issue 就是默认提醒与追踪闭环。`,
+            ].join('\n');
+
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'ci-playwright,netlify-guard',
+              per_page: 100,
+            });
+
+            const existing = openIssues.find(
+              (issue) => issue.body?.includes(marker) && issue.title === title,
+            );
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `再次失败：${runUrl}`,
+              });
+              core.info(`Updated existing issue #${existing.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['ci-playwright', 'netlify-guard'],
+              });
+              core.info(`Created issue #${created.data.number}`);
+            }
+
+      - name: Trigger external AI autofix webhook
+        if: failure() && env.SKIP_SMOKE != 'true' && secrets.AI_AUTOFIX_WEBHOOK != ''
+        env:
+          AI_AUTOFIX_WEBHOOK: ${{ secrets.AI_AUTOFIX_WEBHOOK }}
+        run: |
+          set -euo pipefail
+          payload="$(cat <<JSON
+          {
+            \"repository\": \"${{ github.repository }}\",
+            \"run_id\": \"${{ github.run_id }}\",
+            \"run_url\": \"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
+            \"target_url\": \"${TARGET_URL}\",
+            \"sha\": \"${{ github.sha }}\",
+            \"ref\": \"${{ github.ref }}\"
+          }
+JSON
+          )"
+
+          curl -fsS -X POST "${AI_AUTOFIX_WEBHOOK}" \
+            -H "Content-Type: application/json" \
+            -d "${payload}"

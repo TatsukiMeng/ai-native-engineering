@@ -1,0 +1,132 @@
+name: Quality Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - "docs/**"
+      - ".github/workflows/**"
+      - "AGENTS.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    env:
+      MAJOR_CHANGE_FILE_THRESHOLD: "8"
+      NEXT_PUBLIC_SITE_URL: https://quality-gate.local
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Detect changed files and derive test targets
+        id: changes
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+            head_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            base_sha="$(git rev-parse HEAD~1)"
+            head_sha="$(git rev-parse HEAD)"
+          fi
+
+          git diff --name-only "${base_sha}" "${head_sha}" | sed '/^[[:space:]]*$/d' > /tmp/changed_files.txt
+          grep '^docs/' /tmp/changed_files.txt | sed 's#^docs/##' > /tmp/docs_changed_files.txt || true
+
+          grep -E '\.(cjs|mjs|js|jsx|ts|tsx|json|jsonc|css)$' /tmp/docs_changed_files.txt > /tmp/docs_lint_targets.txt || true
+
+          changed_count="$(wc -l < /tmp/changed_files.txt | tr -d ' ')"
+          code_changes="$(grep -E '^docs/(src|content|source.config.ts|next.config.mjs)' /tmp/changed_files.txt | wc -l | tr -d ' ' || true)"
+          test_changes="$(grep -E '^docs/tests/' /tmp/changed_files.txt | wc -l | tr -d ' ' || true)"
+          lint_target_count="$(wc -l < /tmp/docs_lint_targets.txt | tr -d ' ' || true)"
+          targets="$(node docs/scripts/derive-changed-doc-paths.mjs --from-file /tmp/changed_files.txt)"
+
+          echo "changed_count=${changed_count}" >> "${GITHUB_OUTPUT}"
+          echo "code_changes=${code_changes}" >> "${GITHUB_OUTPUT}"
+          echo "test_changes=${test_changes}" >> "${GITHUB_OUTPUT}"
+          echo "lint_target_count=${lint_target_count}" >> "${GITHUB_OUTPUT}"
+          echo "targets=${targets}" >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "### Quality Gate Inputs"
+            echo "- Changed files: ${changed_count}"
+            echo "- Code changes: ${code_changes}"
+            echo "- Test changes: ${test_changes}"
+            echo "- Lint targets: ${lint_target_count}"
+            echo "- Targeted E2E paths: \`${targets}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Enforce test evolution for major changes
+        env:
+          CODE_CHANGES: ${{ steps.changes.outputs.code_changes }}
+          TEST_CHANGES: ${{ steps.changes.outputs.test_changes }}
+        run: |
+          set -euo pipefail
+          if [ "${CODE_CHANGES}" -ge "${MAJOR_CHANGE_FILE_THRESHOLD}" ] && [ "${TEST_CHANGES}" -eq 0 ]; then
+            echo "::error::Detected ${CODE_CHANGES} code changes but no docs/tests updates. Please add or update tests for this major change."
+            exit 1
+          fi
+
+      - name: Install deps (docs)
+        working-directory: docs
+        run: bun install --frozen-lockfile
+
+      - name: Lint changed files (docs)
+        if: steps.changes.outputs.lint_target_count != '0'
+        working-directory: docs
+        run: |
+          set -euo pipefail
+          mapfile -t lint_targets < /tmp/docs_lint_targets.txt
+          bunx biome check "${lint_targets[@]}"
+
+      - name: Type check (docs)
+        working-directory: docs
+        run: bun run types:check
+
+      - name: Build static export (docs)
+        working-directory: docs
+        run: bun run build
+
+      - name: Install Playwright browser
+        working-directory: docs
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run targeted smoke tests
+        working-directory: docs
+        env:
+          E2E_TARGET_PATHS: ${{ steps.changes.outputs.targets }}
+        run: bunx playwright test tests/e2e/production-smoke.spec.ts --config=playwright.config.ts
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-quality-gate-${{ github.run_id }}
+          path: |
+            docs/playwright-report
+            docs/test-results
+          if-no-files-found: warn
