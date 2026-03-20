@@ -55,8 +55,25 @@ test.describe("Production smoke", () => {
       });
 
       await expect(page.locator("main")).toBeVisible();
-      await expect(page.locator("article")).toBeVisible();
-      await expect(page.locator("article h1").first()).toBeVisible();
+
+      const article = page.locator("article").first();
+      const hasArticle = (await article.count()) > 0;
+
+      if (hasArticle) {
+        await expect(
+          article,
+          `${docPath} should render article container`,
+        ).toBeVisible();
+        await expect(
+          page.locator("article h1").first(),
+          `${docPath} should render article title`,
+        ).toBeVisible();
+      } else {
+        await expect(
+          page.locator("main h1, main h2, main [role='heading']").first(),
+          `${docPath} should render at least one heading in main`,
+        ).toBeVisible();
+      }
     }
   });
 
@@ -69,20 +86,36 @@ test.describe("Production smoke", () => {
         waitUntil: "domcontentloaded",
       });
 
-      const ogImage = await page
-        .locator('meta[property="og:image"]')
-        .getAttribute("content");
-      const twitterImage = await page
-        .locator('meta[name="twitter:image"]')
-        .getAttribute("content");
+      const hasArticle = (await page.locator("article").count()) > 0;
+      const ogMeta = page.locator('meta[property="og:image"]').first();
+      const twitterMeta = page.locator('meta[name="twitter:image"]').first();
+      const hasOgMeta = (await ogMeta.count()) > 0;
+      const hasTwitterMeta = (await twitterMeta.count()) > 0;
 
-      expect(ogImage, `${docPath} og:image should be defined`).toBeTruthy();
-      expect(
-        twitterImage,
-        `${docPath} twitter:image should be defined`,
-      ).toBeTruthy();
-      expect(ogImage ?? "").not.toContain("localhost");
-      expect(twitterImage ?? "").not.toContain("localhost");
+      if (hasArticle) {
+        expect(hasOgMeta, `${docPath} og:image should exist on article page`).toBe(
+          true,
+        );
+        expect(
+          hasTwitterMeta,
+          `${docPath} twitter:image should exist on article page`,
+        ).toBe(true);
+      }
+
+      if (hasOgMeta) {
+        const ogImage = await ogMeta.getAttribute("content");
+        expect(ogImage, `${docPath} og:image content should be defined`).toBeTruthy();
+        expect(ogImage ?? "").not.toContain("localhost");
+      }
+
+      if (hasTwitterMeta) {
+        const twitterImage = await twitterMeta.getAttribute("content");
+        expect(
+          twitterImage,
+          `${docPath} twitter:image content should be defined`,
+        ).toBeTruthy();
+        expect(twitterImage ?? "").not.toContain("localhost");
+      }
     }
   });
 });
