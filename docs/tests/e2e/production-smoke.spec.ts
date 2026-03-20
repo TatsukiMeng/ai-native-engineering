@@ -93,9 +93,10 @@ test.describe("Production smoke", () => {
       const hasTwitterMeta = (await twitterMeta.count()) > 0;
 
       if (hasArticle) {
-        expect(hasOgMeta, `${docPath} og:image should exist on article page`).toBe(
-          true,
-        );
+        expect(
+          hasOgMeta,
+          `${docPath} og:image should exist on article page`,
+        ).toBe(true);
         expect(
           hasTwitterMeta,
           `${docPath} twitter:image should exist on article page`,
@@ -104,7 +105,10 @@ test.describe("Production smoke", () => {
 
       if (hasOgMeta) {
         const ogImage = await ogMeta.getAttribute("content");
-        expect(ogImage, `${docPath} og:image content should be defined`).toBeTruthy();
+        expect(
+          ogImage,
+          `${docPath} og:image content should be defined`,
+        ).toBeTruthy();
         expect(ogImage ?? "").not.toContain("localhost");
       }
 
