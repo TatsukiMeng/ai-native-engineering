@@ -94,3 +94,13 @@ bunx playwright test tests/e2e/production-smoke.spec.ts --config=playwright.conf
 - 决策“Playwright 只跑 Netlify，不再维护本地 smoke”已写入流程与文档。
 - 质量门 + 预览巡检 + 生产巡检三段式职责已明确拆分。
 - `Resolve Netlify deploy preview URL` 已加入稳定兜底策略，降低长时间等待风险。
+
+## 8. 新增浏览器异常检查项（production-smoke）
+已加入的检查项：
+- 页面运行期异常：拦截未忽略的 `console.error` 与 `pageerror`。
+- 横向溢出：校验 `documentElement/body scrollWidth` 不超过视口阈值。
+- 内部链接健康：抽样检查 `main` 区域内部文档链接返回状态 `< 400`。
+- 网络抖动容错：关键 HTTP 探测加入轻量重试，降低瞬时 TLS 抖动误报。
+
+适用场景：
+- 文章续写、排版改动、样式调整后，自动验证“读者在浏览器里真实会看到的问题”。

@@ -167,3 +167,6 @@
 21. **本地与线上职责分离（降维护成本）**
    - `Quality Gate` 只负责 PR 阶段基线闸门（lint/typecheck/build + 大改动补测约束），Playwright 不再在本地构建态重复执行。
    - Playwright 检查职责集中在 `Netlify Preview Guard`（PR）与 `Netlify Production Guard`（main/手动），以部署结果作为唯一验收真相。
+22. **文档站浏览器异常检查项（面向作者高频改动）**
+   - `docs/tests/e2e/production-smoke.spec.ts` 默认应覆盖“读者可见异常”：运行期报错（`console.error` / `pageerror`）、页面横向溢出、内部文档链接失效等。
+   - 对文章续写与样式改动，优先补充这类浏览器体验检查，而不是引入重量级后端测试体系。
