@@ -1,11 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const remoteBaseURL = process.env.E2E_BASE_URL;
+const remoteBaseURL = process.env.E2E_BASE_URL?.trim();
+const missingBaseUrlMessage =
+  "E2E_BASE_URL is required for Playwright smoke checks against Netlify URLs.";
 
-if (!remoteBaseURL) {
-  throw new Error(
-    "E2E_BASE_URL is required. Playwright smoke checks now run against Netlify URLs only.",
-  );
+if (!remoteBaseURL && process.env.CI) {
+  throw new Error(missingBaseUrlMessage);
+}
+
+if (!remoteBaseURL && !process.env.CI) {
+  console.warn(`[playwright] ${missingBaseUrlMessage} Local run will skip smoke tests.`);
 }
 
 export default defineConfig({

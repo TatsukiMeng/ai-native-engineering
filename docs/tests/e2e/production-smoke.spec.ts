@@ -81,6 +81,11 @@ const docPaths = parseTargetDocPaths(process.env.E2E_TARGET_PATHS);
 const requiredRoutes = ["/", "/docs", "/llms.mdx/docs/02-foundation/00-overview.mdx", ...docPaths];
 
 test.describe("Production smoke", () => {
+  test.skip(
+    !process.env.E2E_BASE_URL?.trim(),
+    "E2E_BASE_URL is not set. Set a Netlify URL to run smoke checks.",
+  );
+
   test("core routes are reachable", async ({ request, baseURL }) => {
     for (const route of requiredRoutes) {
       const response = await requestWithRetry(request, withConfiguredBase(baseURL, route));
