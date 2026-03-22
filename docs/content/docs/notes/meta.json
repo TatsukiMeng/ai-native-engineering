@@ -4,6 +4,7 @@
   "defaultOpen": true,
   "pages": [
     "overview",
+    "ai-cicd-retrofit",
     "ai-native-engineering-share"
   ]
 }

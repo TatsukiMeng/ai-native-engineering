@@ -1,17 +1,9 @@
 import fs from "node:fs";
 
-function toCanonicalDocsPath(relativePath) {
+function toDocsRoutePath(relativePath) {
   const normalized = relativePath.replace(/\.mdx$/, "");
 
   if (normalized === "preface") return "/docs";
-
-  if (normalized.endsWith("/00-overview")) {
-    return `/docs/${normalized.slice(0, -"/00-overview".length)}`;
-  }
-
-  if (normalized.endsWith("/overview")) {
-    return `/docs/${normalized.slice(0, -"/overview".length)}`;
-  }
 
   return `/docs/${normalized}`;
 }
@@ -34,19 +26,37 @@ function readChangedFiles() {
   return args.map((line) => line.trim()).filter(Boolean);
 }
 
+function deriveFirstPageRouteFromMeta(metaDir) {
+  const metaPath = `docs/content/docs/${metaDir}/meta.json`;
+
+  try {
+    const raw = fs.readFileSync(metaPath, "utf8");
+    const parsed = JSON.parse(raw);
+    const pages = Array.isArray(parsed?.pages) ? parsed.pages : [];
+    const firstPage = pages.find((page) => typeof page === "string" && page.trim().length > 0);
+
+    if (!firstPage) return null;
+
+    return toDocsRoutePath(`${metaDir}/${firstPage.trim()}`);
+  } catch {
+    return null;
+  }
+}
+
 function collectDocTargets(changedFiles) {
   const targets = new Set();
 
   for (const file of changedFiles) {
     const mdxMatch = file.match(/^docs\/content\/docs\/(.+)\.mdx$/);
     if (mdxMatch) {
-      targets.add(toCanonicalDocsPath(mdxMatch[1]));
+      targets.add(toDocsRoutePath(mdxMatch[1]));
       continue;
     }
 
     const metaMatch = file.match(/^docs\/content\/docs\/(.+)\/meta\.json$/);
     if (metaMatch) {
-      targets.add(`/docs/${metaMatch[1]}`);
+      const metaDir = metaMatch[1];
+      targets.add(deriveFirstPageRouteFromMeta(metaDir) ?? `/docs/${metaDir}`);
       continue;
     }
 
