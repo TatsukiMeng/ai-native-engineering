@@ -1,0 +1,154 @@
+name: Quality Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - 'docs/**'
+      - '.github/workflows/**'
+      - 'AGENTS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    env:
+      MAJOR_CHANGE_FILE_THRESHOLD: '8'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Detect changed files and derive preview targets
+        id: changes
+        run: |
+          set -euo pipefail
+
+          if [ '${{ github.event_name }}' = 'pull_request' ]; then
+            base_sha='${{ github.event.pull_request.base.sha }}'
+            head_sha='${{ github.event.pull_request.head.sha }}'
+          else
+            base_sha=$(git rev-parse HEAD~1)
+            head_sha=$(git rev-parse HEAD)
+          fi
+
+          git diff --name-only "$base_sha" "$head_sha" | sed '/^[[:space:]]*$/d' > /tmp/changed_files.txt
+          grep '^docs/' /tmp/changed_files.txt | sed 's#^docs/##' > /tmp/docs_changed_files.txt || true
+
+          grep -E '\.(cjs|mjs|js|jsx|ts|tsx)$' /tmp/docs_changed_files.txt > /tmp/docs_lint_targets.txt || true
+          grep -E '\.(cjs|mjs|js|jsx|ts|tsx)$' /tmp/docs_changed_files.txt > /tmp/docs_format_targets.txt || true
+
+          changed_count=$(wc -l < /tmp/changed_files.txt | tr -d ' ')
+          code_changes=$(grep -E '^docs/(src|content|source.config.ts|next.config.mjs)' /tmp/changed_files.txt | wc -l | tr -d ' ' || true)
+          test_changes=$(grep -E '^docs/tests/' /tmp/changed_files.txt | wc -l | tr -d ' ' || true)
+          lint_target_count=$(wc -l < /tmp/docs_lint_targets.txt | tr -d ' ' || true)
+          format_target_count=$(wc -l < /tmp/docs_format_targets.txt | tr -d ' ' || true)
+          targets=$(bun docs/scripts/derive-changed-doc-paths.mjs --from-file /tmp/changed_files.txt)
+
+          require_test_evolution=false
+          if [ "$code_changes" -ge "$MAJOR_CHANGE_FILE_THRESHOLD" ] && [ "$test_changes" -eq 0 ]; then
+            require_test_evolution=true
+          fi
+
+          echo "changed_count=$changed_count" >> "$GITHUB_OUTPUT"
+          echo "code_changes=$code_changes" >> "$GITHUB_OUTPUT"
+          echo "test_changes=$test_changes" >> "$GITHUB_OUTPUT"
+          echo "lint_target_count=$lint_target_count" >> "$GITHUB_OUTPUT"
+          echo "format_target_count=$format_target_count" >> "$GITHUB_OUTPUT"
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "require_test_evolution=$require_test_evolution" >> "$GITHUB_OUTPUT"
+
+          {
+            echo '### Quality Gate Inputs'
+            echo "- Changed files: $changed_count"
+            echo "- Code changes: $code_changes"
+            echo "- Test changes: $test_changes"
+            echo "- Lint targets: $lint_target_count"
+            echo "- Format targets: $format_target_count"
+            echo "- Targeted Preview Paths: \`$targets\`"
+            echo "- Require test evolution: $require_test_evolution"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Trigger AI test evolution webhook
+        if: steps.changes.outputs.require_test_evolution == 'true' && secrets.AI_TEST_EVOLUTION_WEBHOOK != ''
+        env:
+          AI_TEST_EVOLUTION_WEBHOOK: ${{ secrets.AI_TEST_EVOLUTION_WEBHOOK }}
+        run: |
+          set -euo pipefail
+          payload=$(cat <<JSON
+          {
+            "repository": "${{ github.repository }}",
+            "run_id": "${{ github.run_id }}",
+            "run_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "pr_number": "${{ github.event.pull_request.number }}",
+            "base_sha": "${{ github.event.pull_request.base.sha }}",
+            "head_sha": "${{ github.event.pull_request.head.sha }}",
+            "targets": "${{ steps.changes.outputs.targets }}",
+            "reason": "major_change_without_test_update"
+          }
+JSON
+          )
+
+          curl -fsS -X POST "$AI_TEST_EVOLUTION_WEBHOOK" \
+            -H 'Content-Type: application/json' \
+            -d "$payload"
+
+      - name: Enforce test evolution for major changes
+        env:
+          CODE_CHANGES: ${{ steps.changes.outputs.code_changes }}
+          TEST_CHANGES: ${{ steps.changes.outputs.test_changes }}
+        run: |
+          set -euo pipefail
+          if [ "$CODE_CHANGES" -ge "$MAJOR_CHANGE_FILE_THRESHOLD" ] && [ "$TEST_CHANGES" -eq 0 ]; then
+            echo "::error::Detected $CODE_CHANGES code changes but no docs/tests updates. Please add or update tests for this major change."
+            exit 1
+          fi
+
+      - name: Install deps (docs)
+        working-directory: docs
+        run: bun install --frozen-lockfile
+
+      - name: Lint changed files (docs, oxc)
+        if: steps.changes.outputs.lint_target_count != '0'
+        working-directory: docs
+        run: |
+          set -euo pipefail
+          mapfile -t lint_targets < /tmp/docs_lint_targets.txt
+          bunx oxlint "${lint_targets[@]}"
+
+      - name: Format check changed files (docs, oxc)
+        if: steps.changes.outputs.format_target_count != '0'
+        working-directory: docs
+        run: |
+          set -euo pipefail
+          mapfile -t format_targets < /tmp/docs_format_targets.txt
+          bunx oxfmt --check "${format_targets[@]}"
+
+      - name: Type check (docs)
+        working-directory: docs
+        run: bun run types:check
+
+      - name: Build static export (docs)
+        working-directory: docs
+        run: bun run build
