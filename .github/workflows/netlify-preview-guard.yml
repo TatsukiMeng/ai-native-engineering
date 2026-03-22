@@ -213,26 +213,43 @@ jobs:
         run: |
           set -euo pipefail
 
-          first_target=$(printf '%s' "$E2E_TARGET_PATHS" | cut -d',' -f1)
-          if [ -z "$first_target" ]; then
-            first_target='/docs/02-foundation'
-          fi
+          raw_targets="${E2E_TARGET_PATHS:-}"
+          candidate_csv="${raw_targets},/docs/02-foundation,/docs"
 
-          target="$PREVIEW_URL$first_target"
+          IFS=',' read -ra raw_candidates <<< "$candidate_csv"
+          candidates=()
+          seen=''
+
+          for raw in "${raw_candidates[@]}"; do
+            target_path="$(printf '%s' "$raw" | xargs)"
+            if [ -z "$target_path" ]; then
+              continue
+            fi
+
+            case "$seen" in
+              *"|$target_path|"*) continue ;;
+            esac
+
+            seen="${seen}|${target_path}|"
+            candidates+=("$target_path")
+          done
 
           for attempt in $(seq 1 40); do
-            status=$(curl -sS -o /tmp/netlify-preview-smoke.html -w '%{http_code}' "$target" || echo 000)
-            echo "Attempt $attempt/40 => $status"
+            for target_path in "${candidates[@]}"; do
+              target="${PREVIEW_URL}${target_path}"
+              status=$(curl -sS -o /tmp/netlify-preview-smoke.html -w '%{http_code}' "$target" || echo 000)
+              echo "Attempt $attempt/40 [$target_path] => $status"
 
-            if [ "$status" = '200' ]; then
-              echo "Preview is ready at $target"
-              exit 0
-            fi
+              if [ "$status" = '200' ]; then
+                echo "Preview is ready at $target"
+                exit 0
+              fi
+            done
 
             sleep 15
           done
 
-          echo "::error::Preview was not ready within 10 minutes: $target"
+          echo "::error::Preview was not ready within 10 minutes for candidates: $candidate_csv"
           exit 1
 
       - name: Install deps (docs)
