@@ -1,0 +1,279 @@
+name: Netlify Preview Guard
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - 'docs/**'
+      - '.github/workflows/netlify-preview-guard.yml'
+      - 'docs/scripts/derive-changed-doc-paths.mjs'
+      - 'docs/tests/e2e/production-smoke.spec.ts'
+      - 'docs/playwright.config.ts'
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: Optional Netlify preview URL override
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  checks: read
+  statuses: read
+
+concurrency:
+  group: netlify-preview-guard-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview-smoke:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Detect changed files and derive target paths
+        id: changes
+        run: |
+          set -euo pipefail
+
+          if [ '${{ github.event_name }}' = 'pull_request' ]; then
+            base_sha='${{ github.event.pull_request.base.sha }}'
+            head_sha='${{ github.event.pull_request.head.sha }}'
+          else
+            base_sha=$(git rev-parse HEAD~1)
+            head_sha=$(git rev-parse HEAD)
+          fi
+
+          git diff --name-only "$base_sha" "$head_sha" | sed '/^[[:space:]]*$/d' > /tmp/changed_files.txt
+          targets=$(bun docs/scripts/derive-changed-doc-paths.mjs --from-file /tmp/changed_files.txt)
+
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "- Targeted E2E paths: \`$targets\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve Netlify deploy preview URL
+        id: preview
+        uses: actions/github-script@v7
+        env:
+          NETLIFY_PRODUCTION_URL: ${{ vars.NETLIFY_PRODUCTION_URL }}
+        with:
+          script: |
+            const fs = require('node:fs');
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const sha = context.payload.pull_request?.head?.sha || context.sha;
+            const prNumber = context.payload.pull_request?.number;
+            const dispatchPreviewUrl = (core.getInput('preview_url') || '').trim();
+
+            const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+            function normalizeToOrigin(raw) {
+              if (!raw) return null;
+
+              try {
+                const url = new URL(raw);
+                return `${url.protocol}//${url.host}`;
+              } catch {
+                return null;
+              }
+            }
+
+            function extractFirstNetlifyOrigin(text) {
+              if (!text) return null;
+
+              const match = String(text).match(/https:\/\/[a-z0-9-]+(?:--[a-z0-9-]+)?\.netlify\.app/gi);
+              if (!match?.length) return null;
+
+              return normalizeToOrigin(match[0]);
+            }
+
+            function readProductionUrlFromFile() {
+              try {
+                const raw = fs.readFileSync('.github/netlify-production-url.txt', 'utf8');
+                const line = raw
+                  .split(/\r?\n/)
+                  .map((value) => value.trim())
+                  .find((value) => value && !value.startsWith('#'));
+
+                return line || null;
+              } catch {
+                return null;
+              }
+            }
+
+            function deriveSiteName(productionUrl) {
+              const origin = normalizeToOrigin(productionUrl);
+              if (!origin) return null;
+
+              const host = new URL(origin).hostname;
+              if (!host.endsWith('.netlify.app')) return null;
+
+              return host.replace('.netlify.app', '');
+            }
+
+            function buildPreviewOrigin(siteName, pr) {
+              if (!siteName || !pr) return null;
+              return `https://deploy-preview-${pr}--${siteName}.netlify.app`;
+            }
+
+            if (dispatchPreviewUrl) {
+              const manualUrl = normalizeToOrigin(dispatchPreviewUrl);
+              if (!manualUrl) {
+                core.setFailed(`Invalid workflow_dispatch preview_url: ${dispatchPreviewUrl}`);
+                return;
+              }
+
+              core.info(`Using workflow_dispatch preview_url: ${manualUrl}`);
+              core.setOutput('url', manualUrl);
+              return;
+            }
+
+            const productionUrl = process.env.NETLIFY_PRODUCTION_URL || readProductionUrlFromFile();
+            const siteName = deriveSiteName(productionUrl);
+
+            if (prNumber && siteName) {
+              const predictedUrl = buildPreviewOrigin(siteName, prNumber);
+              core.info(`Resolved preview URL from PR number + site: ${predictedUrl}`);
+              core.setOutput('url', predictedUrl);
+              return;
+            }
+
+            for (let attempt = 1; attempt <= 20; attempt++) {
+              const checks = await github.request('GET /repos/{owner}/{repo}/commits/{ref}/check-runs', {
+                owner,
+                repo,
+                ref: sha,
+                headers: {
+                  'X-GitHub-Api-Version': '2022-11-28',
+                },
+              });
+
+              for (const run of checks.data.check_runs) {
+                const text = [
+                  run.details_url || '',
+                  run.html_url || '',
+                  run.output?.summary || '',
+                  run.output?.text || '',
+                ].join('\n');
+
+                const candidate = extractFirstNetlifyOrigin(text);
+                if (candidate) {
+                  core.info(`Resolved preview URL from check-runs on attempt ${attempt}: ${candidate}`);
+                  core.setOutput('url', candidate);
+                  return;
+                }
+              }
+
+              const statuses = await github.request('GET /repos/{owner}/{repo}/commits/{ref}/status', {
+                owner,
+                repo,
+                ref: sha,
+                headers: {
+                  'X-GitHub-Api-Version': '2022-11-28',
+                },
+              });
+
+              for (const status of statuses.data.statuses) {
+                const candidate = extractFirstNetlifyOrigin(status.target_url || '');
+                if (candidate) {
+                  core.info(`Resolved preview URL from commit statuses on attempt ${attempt}: ${candidate}`);
+                  core.setOutput('url', candidate);
+                  return;
+                }
+              }
+
+              core.info(`Netlify preview URL not found yet (attempt ${attempt}/20), waiting 15s...`);
+              await sleep(15_000);
+            }
+
+            core.setFailed(
+              'Failed to resolve Netlify deploy preview URL. Configure vars.NETLIFY_PRODUCTION_URL (or .github/netlify-production-url.txt) to enable PR-number based URL construction.',
+            );
+
+      - name: Wait for preview readiness
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+          E2E_TARGET_PATHS: ${{ steps.changes.outputs.targets }}
+        run: |
+          set -euo pipefail
+
+          raw_targets="${E2E_TARGET_PATHS:-}"
+          candidate_csv="${raw_targets},/docs/02-foundation,/docs"
+
+          IFS=',' read -ra raw_candidates <<< "$candidate_csv"
+          candidates=()
+          seen=''
+
+          for raw in "${raw_candidates[@]}"; do
+            target_path="$(printf '%s' "$raw" | xargs)"
+            if [ -z "$target_path" ]; then
+              continue
+            fi
+
+            case "$seen" in
+              *"|$target_path|"*) continue ;;
+            esac
+
+            seen="${seen}|${target_path}|"
+            candidates+=("$target_path")
+          done
+
+          for attempt in $(seq 1 40); do
+            for target_path in "${candidates[@]}"; do
+              target="${PREVIEW_URL}${target_path}"
+              status=$(curl -sS -o /tmp/netlify-preview-smoke.html -w '%{http_code}' "$target" || echo 000)
+              echo "Attempt $attempt/40 [$target_path] => $status"
+
+              if [ "$status" = '200' ]; then
+                echo "Preview is ready at $target"
+                exit 0
+              fi
+            done
+
+            sleep 15
+          done
+
+          echo "::error::Preview was not ready within 10 minutes for candidates: $candidate_csv"
+          exit 1
+
+      - name: Install deps (docs)
+        working-directory: docs
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browser
+        working-directory: docs
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run smoke tests against Netlify preview
+        working-directory: docs
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+          NEXT_PUBLIC_SITE_URL: ${{ steps.preview.outputs.url }}
+          E2E_TARGET_PATHS: ${{ steps.changes.outputs.targets }}
+        run: bunx playwright test tests/e2e/production-smoke.spec.ts --config=playwright.config.ts
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-netlify-preview-${{ github.run_id }}
+          path: |
+            docs/playwright-report
+            docs/test-results
+          if-no-files-found: warn
