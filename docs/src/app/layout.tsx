@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Provider } from "@/components/provider";
+import { resolveSiteOrigin } from "@/lib/site-url";
 import "./global.css";
 
 const inter = Inter({
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
   title: "AI 原生工程 | Vibe Coding 进阶与全域自动化落地",
   description:
     "由极客发起的 AI 全栈自动化开源专著，探讨从调试避坑到 Agent Swarm 的架构师演进之路。",
+  metadataBase: resolveSiteOrigin(),
 };
 
 export default function Layout({ children }: LayoutProps<"/">) {
