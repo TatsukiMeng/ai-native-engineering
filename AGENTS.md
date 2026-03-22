@@ -153,3 +153,17 @@
 17. **非正文材料单独收纳**
    - 分享稿、杂记、阶段性提纲、实验记录、未并入正文主线的材料，统一放在 `docs/content/docs/notes/` 目录下，不要混入 `Part 1` 到 `Part 5` 或 `preface`、`outline` 这类前置页面。
    - `notes` 目录默认视为“书外但相关”的材料区，标题和结构优先服务于检索与复用，不必强行伪装成正式章节。
+18. **部署后质量闭环规范（Netlify + Playwright + AI 修复）**
+   - 对文档站的代码改动，默认要有“部署后线上巡检”能力：基于 Playwright 直接检查已部署链接（而不只在本地跑）。
+   - 巡检失败时，默认要自动沉淀可追踪记录（至少包含 run 链接、失败截图/trace、复现命令），并触发 AI 修复流程或保留可接入的修复 Hook，避免问题只在聊天里口头提醒。
+19. **变更前质量闸门（PR 阶段必须先过 CI）**
+   - 对 `docs/` 相关代码改动，默认先过 PR 质量闸门再允许合并/部署：`Quality Gate` 只负责基线回归（lint/typecheck/build）与“大改动补测约束”，不在本地构建态重复执行 Playwright。
+   - 当改动规模达到“大改动”阈值时，若没有补充或更新 `docs/tests/` 测试脚本，应默认拦截并要求补测，避免只跑旧用例。
+   - Playwright 检查职责集中在 `Netlify Preview Guard`（PR）与 `Netlify Production Guard`（main/手动），以部署结果作为唯一验收真相。
+20. **PR 阶段主动线上预览巡检（Agent 必须打 Netlify Preview）**
+   - 对 `docs/` 相关改动，PR 阶段 Playwright 默认只对 Netlify Deploy Preview URL 执行点对点巡检，不再维护本地 webServer smoke 路径。
+   - Deploy Preview 巡检默认基于 changed files 推导目标路径（点对点），并复用 `docs/tests/e2e/production-smoke.spec.ts`；失败必须上传 trace/screenshot/video artifact。
+   - 当触发“大改动但未更新测试”拦截时，若已配置 `AI_TEST_EVOLUTION_WEBHOOK`，应同步触发外部 agent 的补测流程；未配置时至少在 CI Summary 明确提示需要补测。
+21. **文档站浏览器异常检查项（面向作者高频改动）**
+   - `docs/tests/e2e/production-smoke.spec.ts` 默认应覆盖“读者可见异常”：运行期报错（`console.error` / `pageerror`）、页面横向溢出、内部文档链接失效等。
+   - 对文章续写与样式改动，优先补充这类浏览器体验检查，而不是引入重量级后端测试体系。
