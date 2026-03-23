@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": ["node_modules/**", ".next/**", "out/**"],
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "experimentalSortPackageJson": false,
+  "overrides": [
+    {
+      "files": ["content/**/*.md", "content/**/*.mdx"],
+      "options": {
+        "printWidth": 80,
+        "proseWrap": "always"
+      }
+    }
+  ]
+}

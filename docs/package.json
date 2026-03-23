@@ -13,8 +13,9 @@
     "verify:static-metadata": "node ./scripts/check-static-docs-metadata.mjs",
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
     "postinstall": "fumadocs-mdx",
-    "lint": "bunx oxlint .",
-    "format": "bunx oxfmt --write ."
+    "lint": "oxlint .",
+    "format": "oxfmt -c .oxfmtrc.json --write .",
+    "format:check": "oxfmt -c .oxfmtrc.json --check ."
   },
   "dependencies": {
     "@giscus/react": "^3.1.0",
@@ -32,6 +33,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "oxfmt": "0.41.0",
+    "oxlint": "1.56.0",
     "@tailwindcss/postcss": "^4.2.1",
     "@types/mdx": "^2.0.13",
     "@types/node": "^25.3.1",

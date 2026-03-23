@@ -3,9 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 const remoteBaseURL = process.env.E2E_BASE_URL?.trim();
 
 if (!remoteBaseURL) {
-  throw new Error(
-    "E2E_BASE_URL is required for Netlify smoke checks against a deployed site.",
-  );
+  throw new Error("E2E_BASE_URL is required for Netlify smoke checks against a deployed site.");
 }
 
 export default defineConfig({
