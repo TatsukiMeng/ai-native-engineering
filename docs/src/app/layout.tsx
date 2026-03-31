@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { Provider } from "@/components/provider";
 import { resolveSiteOrigin } from "@/lib/site-url";
 import "./global.css";
+import "./fuwari.css";
 
 const inter = Inter({
   subsets: ["latin"],

@@ -1,7 +1,6 @@
 "use client";
 
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
-import { renderTitleNav } from "fumadocs-ui/layouts/shared";
 import { Github } from "lucide-react";
 import { ButtonLink, buttonStyles } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -14,6 +13,22 @@ type NavbarProps = {
   links?: BaseLayoutProps["links"];
   githubUrl?: string;
 };
+
+function renderTitle(nav: NonNullable<BaseLayoutProps["nav"]>) {
+  const { title, url = "/" } = nav;
+  const className = buttonStyles({ variant: "plain", size: "navTitle" });
+
+  if (!title) return null;
+  if (typeof title === "function") {
+    const Title = title;
+    return <Title href={url} className={className} />;
+  }
+  return (
+    <ButtonLink href={url} variant="plain" size="navTitle">
+      {title}
+    </ButtonLink>
+  );
+}
 
 function renderNavLink(item: NavLinkItem, key: string) {
   if (item.type === "custom") {
@@ -53,9 +68,7 @@ export function Navbar({ nav = {}, links = [], githubUrl }: NavbarProps) {
       <div className="absolute -top-8 right-0 left-0 h-8 bg-fd-card transition" />
       <header className="card-base overflow-visible! mx-auto grid h-(--nav-height) grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-t-none! border-none px-4 backdrop-blur-md">
         <div className="flex min-w-0 items-center justify-self-start">
-          {renderTitleNav(nav, {
-            className: buttonStyles({ variant: "plain", size: "navTitle" }),
-          })}
+          {renderTitle(nav)}
         </div>
 
         {links.length > 0 ? (

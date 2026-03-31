@@ -2,8 +2,10 @@
   "name": "ai-native-engineering",
   "private": true,
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
     "@types/bun": "latest",
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "tailwindcss": "^4.2.1"
   },
   "peerDependencies": {
     "typescript": "^5"
