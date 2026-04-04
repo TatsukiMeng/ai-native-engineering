@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; }
+    #root { display: inline-block; }
+    #root svg { display: block; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="module">
+    import { exportToSvg } from "https://esm.sh/@excalidraw/excalidraw?bundle";
+
+    window.renderDiagram = async (jsonData, options = {}) => {
+      try {
+        const data = typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
+        const elements = data.elements || [];
+        const appState = data.appState || {};
+        const files = data.files || {};
+
+        const background = options.background === "white" ? "white" : "transparent";
+        const exportBackground = background === "white";
+
+        appState.viewBackgroundColor = background === "white" ? (appState.viewBackgroundColor || "#ffffff") : "transparent";
+        appState.exportWithDarkMode = false;
+
+        const svg = await exportToSvg({
+          elements,
+          appState: {
+            ...appState,
+            exportBackground,
+          },
+          files,
+        });
+
+        const root = document.getElementById("root");
+        root.innerHTML = "";
+        root.appendChild(svg);
+
+        window.__renderComplete = true;
+        window.__renderError = null;
+        return { success: true };
+      } catch (err) {
+        window.__renderComplete = true;
+        window.__renderError = err.message;
+        return { success: false, error: err.message };
+      }
+    };
+
+    window.__moduleReady = true;
+  </script>
+</body>
+</html>

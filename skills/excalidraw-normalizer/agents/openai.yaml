@@ -1,0 +1,4 @@
+interface:
+  display_name: "Excalidraw 规范化"
+  short_description: "规范化 Excalidraw 图，便于编辑与导出。"
+  default_prompt: "使用 $excalidraw-normalizer 规范化这张 Excalidraw 图，让它更适合维护编辑与导出。"

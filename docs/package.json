@@ -10,6 +10,8 @@
     "start:e2e": "node ./scripts/serve-export-for-playwright.mjs",
     "test:e2e": "playwright test",
     "test:e2e:netlify": "playwright test tests/e2e/netlify-smoke.spec.ts --config=playwright.netlify.config.ts",
+    "render:diagram:setup": "cd ./scripts/excalidraw && UV_CACHE_DIR=.uv-cache uv sync && UV_CACHE_DIR=.uv-cache uv run playwright install chromium",
+    "render:diagram": "cd ./scripts/excalidraw && UV_CACHE_DIR=.uv-cache uv run python render_excalidraw.py",
     "verify:static-metadata": "node ./scripts/check-static-docs-metadata.mjs",
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
     "postinstall": "fumadocs-mdx",
