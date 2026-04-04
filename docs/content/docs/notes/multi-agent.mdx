@@ -1,262 +1,1334 @@
 ---
-title: MultiAgent 不是把三个终端一起跑
-description: 结合这本书的项目主线，讲清 MultiAgent 什么时候值得上、怎么拆、怎么通信，以及怎么避免把混乱并行化
+title: MultiAgent：协作形态、关键技术与现实判断
+description: 基于官方资料与研究综述，梳理 MultiAgent 的演进、协作形态、底层关键技术、设计原则，以及到 2026 年 4 月已收束出的现实判断
 icon: FileText
 full: false
 ---
 
-# 先把态度讲明白
+import { Accordions, Accordion } from 'fumadocs-ui/components/accordion';
 
-我现在对 MultiAgent 的判断很明确：
+# 先把结论讲明白
 
-**它不是让 AI 突然变聪明的魔法，而是把一个已经能跑的 Agent 系统，继续拆成可分工、可并行、可治理的工程系统。**
+如果这篇文章只留一句话，我会这么说：
 
-很多人第一次聊到 MultiAgent，脑子里会自动浮现一个很燃的画面：一群虚拟员工同时开工，规划、写代码、测功能、提 PR，一条龙全包。
+**MultiAgent 不是“多开几个模型实例”，也不是“把三个终端一起跑”。它更像是在组织一套可分工、可协作、可治理的智能系统。**
 
-听起来当然爽。
+这篇稿子不打算只从 CodeAgent 视角聊这个话题。
 
-但真实工程里，MultiAgent 最先放大的往往不是能力，而是混乱：
+我这次更想把它横着讲清楚：
 
-- 上下文一旦分发错，错误会在多个 Agent 之间复制。
-- 职责一旦边界不清，系统会开始互相踢皮球。
-- 验收一旦还是同一套视角，自洽幻觉会被放大，不会被纠正。
-- 权限一旦不设护栏，多跑几个 Agent 只是把事故并行化。
+- 它为什么在 2024 到 2026 重新变热
+- 它到底有哪些主流技术路线
+- 哪些场景真的适合多 Agent，哪些只是想象很美
+- 今天谈 MultiAgent，到底应该抓哪些原则，警惕哪些坑
 
-:::important[一句话版本]
-MultiAgent 解决的不是“更聪明”，而是“把上下文、职责、执行权和验收权拆开”。
+:::important[资料基线]
+这篇文章主要基于 [Anthropic](https://www.anthropic.com/engineering/building-effective-agents)、[OpenAI](https://openai.com/index/new-tools-for-building-agents/)、[Google](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)、[Microsoft](https://www.microsoft.com/en-us/research/publication/autogen-enabling-next-gen-llm-applications-via-multi-agent-conversation-framework/)、[MCP 官方文档](https://modelcontextprotocol.io/introduction)、[IJCAI](https://www.ijcai.org/proceedings/2024/890) 和 [OpenReview](https://openreview.net/forum?id=wM521FqPvI) 的资料来写。
+
+我会尽量把判断写成“资料事实 + 基于资料的归纳”，而不是凭印象喊口号。
 :::
 
-这也是为什么我不赞成一上来就把读者扔进 Swarm。
+# 为什么现在必须重新看 MultiAgent
 
-这本书前面要先讲 `Prompt`、`Context`、`Rules`、`Harness`、`MCP`，不是铺垫太长，而是在先搭控制面。控制面，人话就是：**谁派活，谁拿什么上下文，谁有权限，做到什么算完成，出了错谁来兜底。**
+严格说，MultiAgent 根本不新。
 
-如果这个控制面还没成型，MultiAgent 很容易变成另一种黑盒面条代码，只不过这次不是一段函数缠在一起，而是一堆 Agent 缠在一起。
+多智能体系统本来就是传统 MAS（Multi-Agent Systems，多智能体系统）和分布式人工智能里的老题目。[IJCAI 2024 的综述](https://www.ijcai.org/proceedings/2024/890) 和 [OpenReview 2024 的综述](https://openreview.net/forum?id=0TDpNKwmF2) 都已经把这条历史线梳理得很完整。所以今天重新看 MultiAgent，不是因为这个词突然被发明出来了，而是因为**问题的重心变了**。
 
-Anthropic 在 2024 年 12 月 19 日发布的 [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) 里，核心建议其实非常朴素：先从最简单可行的 agent pattern 开始，只有在复杂度确实带来收益时，再往上加层。LangChain 官方的 [Multi-agent](https://docs.langchain.com/oss/python/langchain/multi-agent) 文档也把话说得很直白：不是每个复杂任务都需要 multi-agent。
+以前大家讨论 AI，核心问题更像是：模型够不够聪明，回答够不够像人，补全够不够快。
 
-# 这本书里的 MultiAgent，出场顺序不是第一章
+但到了 2024 到 2026，这个问题开始不够用了。越来越多真实任务卡住的，不是模型会不会说，而是一个单体 Agent 根本不适合同时承担这么多事：它既要理解目标，又要调工具、跨系统、维持长上下文、处理异步反馈、自己给自己验收，最后还要保证别失控。换句话说，瓶颈正在从“模型能力”迁移到“系统组织能力”。
 
-如果把整本书按“认知冷启动 + 项目生命周期”来走，MultiAgent 的位置大概会是这样：
+这才是今天必须重新看 MultiAgent 的真正原因。
 
-| 阶段 | 先解决什么 | 这时更像什么形态 |
-| ---- | ---------- | ---------------- |
-| Part 1 | 范式转变、工具分工、控制面意识 | 先建立判断框架 |
-| Part 2 | `SpecDriven`、`Context Engineering`、Rules、Harness | 先把单 Agent 跑稳 |
-| Part 3 | 在真实仓库里做前后端开发、测试、联调 | 单 Agent 为主，开始出现明确分工 |
-| Part 4 | 任务变长、角色变多、链路变复杂 | 引入 MultiAgent 做拆分和并行 |
-| Part 5 | 成本、权限、调度、集群协作 | 再往 Swarm 和治理走 |
+不是因为“多几个 Agent 看起来更高级”，而是因为很多任务已经开始逼着我们承认：**单 Agent 不是万能执行单元，很多时候它只是一个被过度期待的总包工头。**
 
-这里最关键的不是“MultiAgent 很高级”，而是：
+[Anthropic 在 2024 年 12 月 19 日发布的《Building Effective AI Agents》](https://www.anthropic.com/engineering/building-effective-agents) 和 [OpenAI 在 2025 年 3 月 11 日发布的《New tools for building agents》](https://openai.com/index/new-tools-for-building-agents/) 其实都在释放同一个信号：Agent 已经不只是聊天技巧，而是在进入真正的系统工程阶段。到了这个阶段，问题就自然会升级成：
 
-**它通常不是起点，而是单 Agent 闭环已经稳定之后的后手。**
+- 任务怎么拆
+- 上下文怎么分
+- 谁来执行，谁来验收
+- 长任务怎么恢复
+- 出问题时怎么追踪、怎么治理
 
-闭环，人话就是：一个 Agent 至少已经能比较稳定地完成“读上下文 -> 动手执行 -> 跑验证 -> 看失败 -> 继续修 -> 交付结果”这条链。
+一旦问题变成这样，MultiAgent 就不再是“要不要追新概念”，而是“有没有必要重新设计系统组织方式”。
 
-如果这条最小闭环都还没跑通，就急着上 MultiAgent，结果通常不会是“更强”，而是“更贵、更慢、更难 debug”。
+再往下看，[Anthropic 在 2025 年 6 月 13 日公开的 multi-agent research system](https://www.anthropic.com/engineering/built-multi-agent-research-system) 把这个转折讲得特别直接：多 Agent 真正成立，不是因为它让模型突然更聪明了，而是因为它让系统终于能把广度探索、并行检索、跨上下文压缩这些单 Agent 很难同时做好的事情拆开处理。这是一个很关键的信号，它说明 MultiAgent 的价值开始从“概念想象”变成“在某些任务里确实更合适的结构”。
 
-:::warning[先别自我感动]
-如果系统现在还停留在人肉复制报错、手动喂上下文、没有 trace、没有评测、没有超时控制的阶段，那还不是 MultiAgent 的问题，甚至还没真正进入 Agent Engineering。
+与此同时，企业侧的诉求也在变。[ServiceNow](https://newsroom.servicenow.com/press-releases/details/2025/ServiceNow-announces-new-agentic-AI-innovations-to-autonomously-solve-the-most-complex-enterprise-challenges-01-29-2025-traffic/default.aspx)、[Workday](https://blog.workday.com/en-us/managing-ai-powered-future-of-work.html) 和 [Microsoft Azure AI Foundry](https://azure.microsoft.com/en-us/blog/azure-ai-foundry-your-ai-app-and-agent-factory/) 这些材料背后讲的根本不是“多 agent 很酷”，而是另一件更现实的事：企业已经不满足于一个会回答问题的助手，它们要的是一套能跨角色、跨系统、跨流程协作，还能被管理、被问责、被治理的智能流程层。
+
+这时候再看 [MCP](https://modelcontextprotocol.io/introduction) 和 [A2A](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)，你会发现它们的重要性也不是“又多了两个名词”，而是行业终于开始认真补基础设施了。前者在补 `agent <-> tool / resource`，后者在补 `agent <-> agent`。这不代表标准已经统一，但至少说明大家已经意识到：如果继续每家都写私有胶水代码，MultiAgent 很难真的长成产业能力。
+
+最后，真正让我觉得这个方向必须重看的，不是热度，而是冷水。[OpenReview 在 2025 年发布的《Why Do Multiagent Systems Fail?》](https://openreview.net/forum?id=wM521FqPvI) 和 [《Why Do Multi-Agent LLM Systems Fail?》](https://openreview.net/forum?id=MqBzKkb8eK) 很重要，因为它们把话题从“MultiAgent 能干什么”往前推了一步，开始问“MultiAgent 为什么经常干砸”。这意味着行业已经不只是沉迷想象力，开始进入更像工程学的阶段了：要讨论 specification、coordination、verification、observability 和治理。
+
+:::important[一句话判断]
+今天重新看 MultiAgent，不是为了追热词，而是因为 AI 系统真正难的部分，正在从“让模型回答”变成“让一套智能系统长期协作而不失控”。
+
+这波热度当然有 hype，但它背后对应的问题也确实比以前更真了。
 :::
 
-# MultiAgent 真正解决的，不是“更聪明”，而是四种工程麻烦
+# 先别把所有 MultiAgent 混成一个词
 
-把问题说人话一点，MultiAgent 往往在四种场景里才真的有价值。
+今天很多文章的问题，不是资料少，而是把完全不同的东西都叫成了 MultiAgent。读者一眼看过去，会觉得这些词都认识，但根本不知道差别在哪里。
 
-| 工程麻烦 | 单 Agent 常见症状 | MultiAgent 的正确拆法 |
-| -------- | ----------------- | --------------------- |
-| 上下文塞不下 | 一个 Agent 同时背 PRD、代码、日志、测试、部署信息，最后什么都记不住 | 按角色拆上下文，只给当前任务所需材料 |
-| 角色互相打架 | 同一个 Agent 既要规划、又要实现、又要 review，目标函数混在一起 | 把规划、实现、验证拆开，避免角色冲突 |
-| 延迟越来越高 | 顺序执行一长串任务，前端、后端、测试互相排队 | 把可并行的子任务拆成并发 worker |
-| 自洽幻觉放大 | 写代码的 Agent 自己写测试、自己解释结果，最后自己说自己没问题 | 让 reviewer 或 evaluator 拿不同上下文做交叉验收 |
+如果要把这件事讲明白，我觉得不能先扔术语，得先回答三个更人话的问题：
 
-这里面最容易被低估的一点，其实是**验收视角分离**。
+1. **谁在指挥？**
+   是不是有一个总协调者统一拆任务、分配工作、汇总结果？
+2. **任务怎么流？**
+   是按固定步骤接力推进，还是多个 Agent 同时展开，再回到一起？
+3. **Agent 靠什么协作？**
+   是互相发消息、围着共享状态工作，还是干脆各自独立协商？
 
-很多团队以为 MultiAgent 的价值主要来自并行，但在真实项目里，另一个更大的收益其实是：不要让“同一个脑回路”负责从头到尾的所有判断。
+只要这三个问题想清楚，很多看起来很玄的名词就会突然变得很好懂。
 
-尤其在代码场景里，如果实现者和验证者共享了同样的错误前提，系统非常容易掉进“逻辑自洽 + 测试自洽”的陷阱。代码能跑，测试也绿，但方向一开始就偏了。
+:::tip[先别急着记术语]
+先拿这三个问题去压一遍任何一个系统：
 
-这也是为什么 Anthropic 在 2025 年 6 月 13 日公开 [How we built our multi-agent research system](https://www.anthropic.com/engineering/built-multi-agent-research-system) 时，重点并不只是“并发更快”，而是让主 agent 把检索、阅读、汇总这些不同工作拆给专门的 subagent，从而减少单个 agent 被海量上下文压垮。
+- 谁在指挥
+- 任务怎么流
+- Agent 靠什么协作
 
-# 什么时候先别上 MultiAgent
-
-很多“想上 MultiAgent”的冲动，本质上都不是真的需要多 Agent，而是当前系统还有更基础的坑没补。
-
-下面这几种情况，我的建议都偏保守：
-
-- 单 Agent 连最小执行闭环都跑不稳。
-- 需求本身还很糊，连交付物和完成条件都说不清。
-- 仓库里没有统一的 `Rules`、目录约束和任务边界。
-- 没有 trace、日志、回放和失败分类，只能靠聊天记录猜哪里错了。
-- 没有超时、步数、Token、权限边界，系统想跑多久就跑多久。
-
-如果这些问题还没解决，多 Agent 往往只会把原本一个地方的混乱，复制成三个地方的混乱。
-
-LangChain 官方文档把动机总结得很实用：multi-agent 常见收益主要来自 `tool calling`、`handoff`、上下文隔离和专门化分工。反过来说，如果这些收益在当前任务里还不成立，那就没必要为了“看起来先进”硬上。
-
-# 一个更像真实项目的分工例子
-
-这本书默认优先用大众化 Web 场景举例，所以拿一个很常见的需求来说：
-
-**给一个已经在线上的 SaaS 后台补“团队成员管理”模块。**
-
-这类任务如果只让一个大 Agent 从头包到尾，常见结果通常是：
-
-- 前端页面很快搭出来了，但权限边界是错的。
-- 后端接口补了，但没有沿用现有认证中间件。
-- 测试看起来写了，但其实只验证 happy path。
-- 上线前才发现涉及数据库迁移、审计日志和邀请链接过期策略。
-
-这时候，多 Agent 的合理拆法大概更像下面这样：
-
-| 角色 | 主要职责 | 核心输出 | 不该碰的事 |
-| ---- | -------- | -------- | ---------- |
-| Planner | 读 PRD、仓库约束、现有模块，拆任务和依赖 | 子任务清单、风险点、完成条件 | 不直接大改代码 |
-| Backend Worker | 补接口、权限校验、审计日志、测试 | API 变更、后端测试结果 | 不负责前端 UI 决策 |
-| Frontend Worker | 列表页、邀请弹窗、状态提示、异常态 | 页面代码、交互说明、截图或测试 | 不私自修改服务端契约 |
-| Reviewer / Test Worker | 基于 diff、需求和日志做交叉验证 | 风险清单、回归结果、遗漏项 | 不替实现者偷偷补锅 |
-| Release Guard | 检查 migration、feature flag、回滚方案、发布说明 | 上线检查单 | 不参与业务实现 |
-
-真正让系统协作起来的，不是“给每个 Agent 起个酷名字”，而是给它们发同一种任务契约。
-
-下面这个任务包，比一大段空泛 Prompt 更有用：
-
-```yaml
-role: backend-worker
-goal: 为“团队成员管理”补齐邀请、移除、权限校验接口
-scope:
-  - apps/server/src/modules/team/**
-  - apps/server/src/modules/auth/**
-  - apps/server/tests/team/**
-inputs:
-  - docs/prd/team-membership.md
-  - openapi/team.yaml
-  - existing-rules/auth-and-rbac.md
-constraints:
-  - 必须复用现有 auth 中间件
-  - 不要改动 billing 模块
-  - 遇到数据库结构变化必须升级为人工确认
-done_when:
-  - 邀请、移除、角色变更接口通过测试
-  - 审计日志字段完整
-  - 返回变更文件清单和剩余风险
-escalate_when:
-  - 现有 RBAC 模型无法覆盖需求
-  - 需要新增 migration
-  - 发现前端依赖的契约与 PRD 冲突
-```
-
-这个任务包的重点不是格式好看，而是把四件事写死：
-
-- 目标是什么
-- 边界在哪里
-- 什么算完成
-- 什么情况必须升级
-
-没有这四件事，MultiAgent 往往不是协作，而是甩锅。
-
-:::tip[真正该共享的不是所有聊天记录]
-大部分时候，subagent 最该拿到的不是完整对话历史，而是压缩后的任务契约、必要上下文和上一步的结构化产物。
-这比把几千行聊天记录整段转发过去更稳，也更省 Token。
+能回答这三句，再去看它叫 `team`、`swarm`、`workflow` 还是 `committee`，基本就不太容易被名字带跑。
 :::
 
-# 通信层先讲人话，再讲协议
+## 先看“谁在指挥”
 
-很多 MultiAgent 文章一上来就讲黑板架构、消息总线、协议层、状态同步，读完像在看一份分布式系统期末论文。
+最粗的一刀，其实是看控制拓扑，也就是谁在掌控全局。
 
-这些东西当然重要，但如果不先翻成人话，很容易只剩黑话。
+### 中心化编排
 
-可以先把通信问题拆成三层：
+这类系统有一个明显的主脑，或者至少有一个主控制流。
 
-| 场景 | 更像什么 | 常见做法 |
-| ---- | -------- | -------- |
-| 同一个运行时里的多个角色 | 一个主管给几个同事派活 | `tool call`、`handoff`、共享状态对象 |
-| 跨服务、长任务、异步解耦 | 一条消息队列把不同系统串起来 | queue、event bus、job system |
-| 跨框架、跨供应商的标准互通 | 不同公司的 Agent 服务开始说同一种话 | MCP、A2A 这类协议 |
+人话一点，就是：
 
-到了协议这一层，最容易混淆的是 `MCP` 和 `A2A`。
+- 有一个总负责人知道目标是什么
+- 它决定把任务拆给谁
+- 它决定什么时候继续、什么时候停止
+- 最后也是它来汇总结果
 
-- [MCP](https://modelcontextprotocol.io/introduction) 更偏向 `agent <-> tool / resource`。官方的比喻很形象，它更像 AI 应用的通用接口层，让模型更稳定地接工具、资源和数据。
-- [A2A](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/) 更偏向 `agent <-> agent`。Google 在 2025 年 4 月 9 日公开发布这一协议时，重点就是让不同框架、不同供应商的 agent 服务能做任务委派和结果交换。
+这类系统更像“项目经理带专项同事”。
 
-所以别把它们理解成二选一。
+现在公开的一手工业案例，大多数都偏这一类。比如 [Anthropic 的 multi-agent research system](https://www.anthropic.com/engineering/built-multi-agent-research-system)，本质就是 `orchestrator-worker`。好处是清楚、好 debug、好加护栏；坏处是主协调者容易变瓶颈。
 
-更接近真实世界的情况通常是：
+![中心化编排拓扑示意图](/images/notes/multi-agent/multi-agent-topology-centralized.avif)
 
-- 一个 agent 先通过 MCP 接数据库、文档、浏览器、代码搜索。
-- 然后它再通过 A2A 或自定义任务协议，把某个子任务派给另一个 agent 服务。
+### 去中心化协作
 
-这才是“既能接世界，也能接同伴”的完整形态。
+这类系统没有单一主控，多个 Agent 更像平等节点。
 
-# 技术栈别一上来就改全家桶
+人话一点，就是：
 
-聊 MultiAgent 时，另一个常见误区是：为了上多 Agent，反向推翻整个技术栈。
+- 没有一个“总经理”永远说了算
+- 每个 Agent 会根据局部信息和能力做决定
+- 它们之间更像协作网络，而不是上下级关系
 
-这通常没有必要。
+这类系统更像“多个独立团队临时联合干活”。
 
-如果目标是 Web 产品、管理后台、文档站配套案例，优先看现有技术栈里能不能自然长出来：
+[AgentNet](https://openreview.net/forum?id=tXqLxHlb8Z) 这类研究很看重这条路，因为中心化天然有单点瓶颈、扩展性问题和隐私边界问题。但它的工程难度也更高：路由怎么收敛、冲突怎么解决、谁来背责任，这些都更难。
 
-| 场景 | 更适合先看什么 | 理由 |
-| ---- | -------------- | ---- |
-| TypeScript / Next.js / 前后端一体 | [AI SDK Agents](https://ai-sdk.dev/docs/agents/overview) | 适合把 agent loop、tool call、UI streaming 和应用层逻辑接在一起 |
-| TypeScript / 需要更强 workflow 与状态编排 | [Mastra](https://mastra.ai/docs) | 更适合把 agent、workflow、memory、工具接入收成框架化结构 |
-| Python / 数据流、图编排、研究型任务 | [LangGraph](https://langchain-ai.github.io/langgraph/) | 更适合显式状态图、确定性流转和复杂节点控制 |
+![去中心化协作拓扑示意图](/images/notes/multi-agent/multi-agent-topology-decentralized.avif)
 
-这里真正重要的不是“哪一个名字更火”，而是：
+## 再看“任务怎么流”
 
-**先用离当前项目最近的抽象层。**
+在“谁指挥”之外，第二个关键问题是：任务到底怎么在系统里移动。
 
-如果一个 TypeScript 项目已经有清晰的任务边界、工具集和验证链，那就先别为了 MultiAgent 把全家桶切去 Python。
-反过来，如果团队本来就在做数据科学和图编排，那也没必要为了追求前端一体化，硬把所有 agent orchestration 塞回 Web 框架。
+下面这几种形态最常见。它们不是互斥的，很多真实系统都是混合的，但分开理解很重要。
 
-# 从 MultiAgent 到 Swarm，中间差的不是数量，而是控制面
+![MultiAgent 常见协作形态对照图](/images/notes/multi-agent/multi-agent-collaboration-patterns.avif)
 
-很多团队喜欢很快把话题升级到 `Swarm`，好像只要并发多开几个 Agent，事情就立刻有了未来感。
+### 监督者 / Orchestrator-Worker
 
-我对这件事的判断也很直接：
+这是今天最容易落地，也最常见的一种。
 
-**三个终端一起跑，不等于 Swarm。**
+它的基本逻辑是：
 
-真正配得上 `Swarm` 这个词的，通常至少要再补几层东西：
+- 一个 supervisor 先理解总任务
+- 把任务拆成多个子问题
+- 分给不同 worker
+- 最后再把结果收回来整合
 
-- 有统一调度，而不是靠人工盯着谁先跑谁后跑。
-- 有预算和配额，而不是让每个 Agent 自己烧 Token。
-- 有状态登记和可回放记录，而不是只剩聊天窗口。
-- 有权限边界和人工确认，而不是所有 Agent 默认拿最高权限。
-- 有失败隔离和重试策略，而不是一个节点炸了整串全挂。
+它最像什么？最像一个总协调者带一组专项执行者，也最像现实团队里的“项目经理 + 专项同事”。
 
-换句话说，MultiAgent 更像是“分工系统”，而 Swarm 更像是“带治理的分工集群”。
+它适合什么？
 
-这也是这本书为什么要把 `Rules`、`Harness`、`MCP`、Playwright、成本治理、护栏这些能力，写成全流程伴随能力，而不是等到最后突然空降一章“高级玩法”。
+- Research
+- 宽搜型信息处理
+- 可以明显拆成几个子问题的大任务
 
-:::note[这本书里的落地边界]
-文档工程本身保持 Fumadocs + Next.js 的纯静态导出，也就是 `output: 'export'`。
+它的主要好处是：
 
-真正可运行的 MultiAgent 样例，应该放在 `cases/` 里做独立实验工程；`docs/` 负责把控制面、分工、协议和踩坑讲清楚，而不是把长生命周期 agent runtime 硬塞进文档站。
+- 责任边界清楚
+- 上下文容易隔离
+- 结果更容易汇总
+
+它的主要坏处是：
+
+- supervisor 很容易变成瓶颈
+- 一旦主脑判断错了，整串任务都会跟着偏
+- 如果拆分本身不合理，worker 再努力也没用
+
+<Accordions type="multiple">
+<Accordion title="Example：CodeAgent SubAgent 怎么像一个监督者系统" id="orchestrator-worker-example">
+
+假设一个在线 SaaS 后台刚改完 RBAC 模型，结果出现线上故障：
+
+**被邀请加入团队的新用户，点击邀请链接后会卡在 loading，永远进不去团队。**
+
+如果让一个大 Agent 从头查到尾，它通常会把前端、后端、鉴权、邮件链接、数据库状态全塞进一个上下文里，最后不是漏掉关键线索，就是改出一串顺手的副作用。
+
+监督者模式更像下面这样：
+
+1. 主 Agent 先读 issue、错误日志、最近的 RBAC 相关 diff，确认这是一个“邀请链路失效”的问题，而不是“整个登录系统都坏了”。
+2. 它把任务拆成三个子问题：
+   - `subagent-a` 只看前端邀请页和 network trace，确认到底卡在哪个请求。
+   - `subagent-b` 只看后端邀请验签、token 解码和团队成员落库逻辑。
+   - `subagent-c` 只看最近一周和 RBAC / auth / invitation 相关的提交，找最可疑的回归点。
+3. 三个 subagent 拿到的上下文都是裁剪过的：
+   - A 不需要知道数据库 migration 细节，只需要页面代码、接口响应和浏览器 trace。
+   - B 不需要看整套前端 UI，只需要 invitation service、auth middleware、成员写库逻辑和相关测试。
+   - C 不需要懂业务流程，只需要 commit diff、PR 描述和变更时间线。
+4. 主 Agent 等三个结果回来后再汇总：
+   - A 发现前端卡在 `/api/invitations/accept`
+   - B 发现后端在 RBAC 升级后，`pending_member` 角色不再被允许走 accept 流程
+   - C 发现三天前的权限重构把原先的白名单逻辑删掉了
+5. 这时候主 Agent 才决定下一步：
+   - 让一个修复型 subagent 补后端条件判断和回归测试
+   - 让另一个验证型 subagent 跑邀请流程的端到端验证
+   - 最后自己汇总变更、风险和上线说明
+
+这个例子的重点不是“多叫几个 Agent 名字”，而是：
+
+- 主 Agent 只负责拆问题和汇总，不负责把所有细节都自己啃完
+- 每个 subagent 只拿解决当前子问题需要的上下文
+- 最后的判断和交付仍然要回到主 Agent 手里
+
+这就是为什么这种模式适合 CodeAgent：不是因为写代码天然需要很多 Agent，而是因为某些问题天然需要**拆视角、拆上下文、拆验证责任**。
+
+</Accordion>
+</Accordions>
+
+### 流水线 / Graph Workflow
+
+这一类不要想成“大家在开会”，要想成“大家在接力”。
+
+它的逻辑是：
+
+- 第一个 Agent 做完第一步
+- 结果交给第二个 Agent
+- 第二个做完再交给第三个
+- 整条链像流程图一样往前走
+
+它最像什么？最像审批流、生产流水线或者一个可回放、可恢复的任务图。
+
+它适合什么？
+
+- 企业流程
+- 长任务 orchestration
+- 需要断点恢复、回放、人工插手的场景
+
+为什么很多团队喜欢它？
+
+- 可预测
+- 好观察
+- 好恢复
+- 适合合规和人工接管
+
+它的主要坏处是：
+
+- 前面一环歪了，后面全会跟着歪
+- 流程过于僵硬时，不适合探索型任务
+- 图越来越复杂后，维护成本会上升得很快
+
+<Accordions type="multiple">
+<Accordion title="Example：企业报销为什么更像流水线，不像开会" id="graph-workflow-example">
+
+一个跨国公司的报销自动化系统，很适合用流水线理解。
+
+假设员工提交了一张“海外出差 + 打车 + 酒店 + 客户晚餐”的混合报销单，系统可以按固定步骤推进：
+
+1. 入口 Agent 先做票据识别，把发票、金额、币种、时间和报销类型结构化。
+2. 规则 Agent 再根据地区政策判断哪些能报、哪些超标、哪些需要额外审批。
+3. 风险 Agent 检查异常模式，比如同一时间段重复打车、酒店金额超出城市基准线、客户晚餐缺少参会人信息。
+4. 摘要 Agent 把整个判断过程整理成一页审批摘要，方便财务或主管快速确认。
+5. 最后人工审批节点只需要决定“通过 / 驳回 / 补资料”，而不是重新从原始票据推理一遍。
+
+这里最关键的不是“多 Agent 很聪明”，而是每一步都相对稳定：
+
+- 票据识别就是票据识别
+- 政策判断就是政策判断
+- 风险判断就是风险判断
+- 审批摘要就是审批摘要
+
+这也是为什么这类系统经常和 Graph Workflow、durable execution 绑在一起，因为企业真正要的不是讨论感，而是：
+
+- 哪一步失败了能不能从中间恢复
+- 哪一步需要人工插手
+- 整条链有没有可回放记录
+
+</Accordion>
+</Accordions>
+
+### 评审 / 辩论 / Committee
+
+这一类的核心不是“分工执行”，而是“多视角交叉判断”。
+
+它的逻辑是：
+
+- 多个 Agent 对同一问题独立思考
+- 它们互相批评、投票，或者由一个 judge 汇总
+- 最终不是看谁先说，而是看谁更站得住
+
+它最像什么？最像作者、评审、元评审者组成的小型评审会，或者同一份方案被不同角色交叉 review。
+
+它适合什么？
+
+- 高不确定性推理
+- 方案评审
+- 红队、安全、judge 类任务
+
+它的主要价值是：
+
+- 不是更快，而是更稳
+- 当你不希望单个 Agent 一路自洽到底时，这类机制特别有用
+
+它的主要坏处是：
+
+- 很贵
+- 很耗 Token
+- 很容易出现“多数人一起错”
+
+[Multi-LLM Debate](https://openreview.net/forum?id=sy7eSEXdPC) 就提醒过，辩论不一定天然带来更好答案，它也可能收敛成多数意见，甚至放大共同误区。
+
+<Accordions type="multiple">
+<Accordion title="Example：一份并购分析报告怎么用 Committee 做交叉判断" id="committee-example">
+
+假设一家基金正在评估是否收购一家垂直 SaaS 公司。
+
+如果只让一个 Agent 从头到尾写结论，它很容易出现一种很典型的问题：叙事非常完整，但所有判断都建立在同一个前提集合上，一旦前提错了，整份报告会错得非常自洽。
+
+Committee 模式更像这样：
+
+1. `agent-finance` 只负责看收入结构、毛利率、留存率和现金流。
+2. `agent-risk` 只负责挑坑，专门找监管、合同、客户集中度和数据合规风险。
+3. `agent-market` 只负责判断行业空间、竞争格局和增长逻辑。
+4. `agent-skeptic` 不负责写新分析，只负责问一句：“这份结论里有没有超出证据范围的推断？”
+5. 最后由 `judge-agent` 汇总：
+   - 哪些观点被多方支持
+   - 哪些观点存在冲突
+   - 哪些地方必须升级成人类分析师决定
+
+这类系统值钱的地方就在这儿：它不是为了更快把报告凑出来，而是为了避免“一个脑回路从头自洽到尾”。
+
+但它也有清晰代价：如果几个 agent 的信息源差不多、模型底座差不多、提示方向也差不多，它们最后很可能只是一起把一个偏见说得更响。
+
+</Accordion>
+</Accordions>
+
+### 共享状态 / Blackboard
+
+这一类最容易被写糊。
+
+它不是“Agent 之间一直互相聊天”，而是多个 Agent 围着同一个共享工作区工作。
+
+它的逻辑是：
+
+- 大家不是直接互相来回传话
+- 而是把中间结果写进共享状态
+- 其他 Agent 再根据共享状态决定下一步动作
+
+它最像什么？最像多人围着同一块白板工作，或者围着同一份不断更新的任务面板工作。
+
+它适合什么？
+
+- 需要回放、审计、断点恢复的系统
+- 长任务 orchestration
+- 需要明确状态流转的系统
+
+为什么这类模式重要？
+
+- 很多长任务系统真正需要的，不是 endless chat，而是一个可追踪、可恢复、可审计的状态空间
+- [LangGraph 的 StateGraph](https://reference.langchain.com/python/langgraph/graph/state/StateGraph) 就很适合拿来理解这一点
+
+它的主要坏处是：
+
+- 状态 schema 很难设计
+- 并发更新容易冲突
+- reducer 和状态合并逻辑一复杂，系统会越来越像状态机地狱
+
+<Accordions type="multiple">
+<Accordion title="Example：复杂客服工单为什么更适合共享状态" id="blackboard-example">
+
+想象一个企业客服系统收到这样一张工单：
+
+“客户说他们昨晚被重复扣费，两笔金额不一致，而且后台管理员账号现在也登不上去。”
+
+这个工单天然是混合问题：
+
+- 可能有支付问题
+- 可能有权限问题
+- 还带着客户情绪和升级风险
+
+如果让多个 Agent 一直互相聊天，很快就会乱。更合理的做法是围着同一份工单状态工作。
+
+具体可以这样拆：
+
+1. 分类 Agent 先写入共享状态：
+   - `ticket_type = payment + auth`
+   - `customer_tier = enterprise`
+   - `severity = high`
+2. 支付 Agent 再补：
+   - 是否存在重复扣费记录
+   - 两笔订单状态是否一致
+   - 是否已触发自动退款保护
+3. 权限 Agent 再补：
+   - 管理员登录失败是否和昨晚的 RBAC 更新有关
+   - 有没有命中异常锁定规则
+4. 政策 Agent 再补：
+   - enterprise 客户高优工单是否要求 30 分钟内人工响应
+5. 回复 Agent 最后根据共享状态生成：
+   - 给客户的临时解释
+   - 给内部值班同学的处理摘要
+
+这里没有任何一个 Agent 需要知道“别人完整聊了什么”，它们只需要围着不断更新的状态对象工作。这就是 blackboard 的典型价值。
+
+</Accordion>
+</Accordions>
+
+### 事件驱动 / Asynchronous Messaging
+
+这一类更接近真实分布式系统。
+
+它的逻辑是：
+
+- Agent 不一定同步轮流说话
+- 谁收到事件、谁满足条件，谁就开始干活
+- 任务可以异步推进，不必所有人都等同一个时钟
+
+它最像什么？最像消息队列、工单系统或者事件总线。
+
+它适合什么？
+
+- 多系统集成
+- 长任务
+- 企业级 runtime
+
+为什么这类模式值钱？
+
+- 弹性更强
+- 更适合跨系统
+- 更适合异步长任务
+
+[AutoGen Core](https://microsoft.github.io/autogen/stable/user-guide/core-user-guide/index.html) 对这一层就讲得很清楚，它的底层更偏 actor model 和异步消息，不是单纯的多轮聊天。
+
+它的主要坏处是：
+
+- 调试明显更难
+- 重试、幂等、状态一致性、事件顺序都会变成真问题
+- 业务链一长之后，很容易出现“事情在跑，但没人能一眼看懂现在跑到哪了”
+
+<Accordions type="multiple">
+<Accordion title="Example：生产事故响应为什么更能体现事件驱动" id="async-messaging-example">
+
+比“订单完成后发一串消息”更能体现这类模式特点的，其实是**生产事故响应**。
+
+假设一家 SaaS 公司的监控系统在凌晨 2:13 触发了一个事件：
+
+`checkout_error_rate_spike`
+
+这时候真正合理的系统，不会是一个总 Agent 慢慢想：“我先看看日志，再看看数据库，再发公告，再决定要不要回滚。”
+
+更典型的事件驱动做法是：
+
+1. 监控系统把 `checkout_error_rate_spike` 发布到事件总线。
+2. `log-analysis-agent` 订阅这类告警，一收到就去抓过去 10 分钟的错误日志，判断是不是某个新版本开始报 `db_timeout`。
+3. `dependency-agent` 也订阅同类事件，但它不看日志，它只看依赖图和基础设施状态，判断是不是数据库连接池、缓存或支付网关有异常。
+4. `rollback-agent` 不会在第一时间就动手，但它会监听前两个 Agent 产出的新事件，比如：
+   - `suspected_deploy_regression`
+   - `payment_gateway_unhealthy`
+5. `customer-comms-agent` 也不是等所有分析结束才开始写文案。只要收到 `incident_confirmed`，它就先生成对内播报和对外状态页草稿。
+6. 如果 5 分钟后又出现 `rollback_completed`，通知 Agent 就继续响应这个新事件，把外部公告从“正在调查”切成“已缓解，继续观察”。
+
+这个例子最能体现事件驱动的地方在于：
+
+- 没有人要求所有 Agent 轮流说完再继续
+- 大家不是围着一个统一对话上下文同步排队
+- 不同角色会根据**不同事件**在不同时间点被触发
+- 系统里真正流动的，不是长对话，而是状态变化和事件消息
+
+所以事件驱动最像的不是一群人围桌讨论，而是一个不停有新信号进入、不同角色按订阅规则接力响应的运行时系统。
+
+</Accordion>
+</Accordions>
+
+### 对等 / Peer-to-Peer / Decentralized
+
+这是最容易让人脑补出“智能体社会”的一类。
+
+它的逻辑是：
+
+- 没有固定主控
+- 多个 Agent 按能力和局部信息自己协商
+- 网络结构本身会影响协作效果
+
+它最像什么？最像多个独立组织共同完成一件事，而不是一个团队内部排班。
+
+它适合什么？
+
+- 跨组织协作
+- 强隐私边界场景
+- 没有谁愿意把全部控制权交给中心节点的系统
+
+为什么它吸引人？
+
+- 理论上更可扩展
+- 更适合跨组织和隐私边界
+- 不容易形成单点瓶颈
+
+它的主要坏处是：
+
+- 最难治理
+- 谁可信、谁说了算、怎么防串谋、怎么防死循环、怎么保证收敛，全是硬问题
+
+所以这类路线很值得关注，但至少从今天公开的一手工业材料看，它更像前沿方向，不像默认起点。
+
+<Accordions type="multiple">
+<Accordion title="Example：多机器人仓储协同为什么更能体现去中心化" id="decentralized-example">
+
+如果要找一个真正能体现“去中心化协作”特点的典型画面，我觉得比跨企业供应链更直观的，是**多机器人仓储协同**。
+
+想象一个大型仓库里同时有几十台搬运机器人在跑：
+
+- 有的在搬货
+- 有的在去补货
+- 有的电量快见底，准备去充电
+- 有的正占着狭窄通道
+
+如果用一个中心大脑来给每台机器人规划每一步动作，理论上当然可以，但很容易出现几个问题：
+
+- 中心调度器会成为性能瓶颈
+- 仓库状态变化太快，中心规划很容易过时
+- 一旦中心节点挂掉，整个系统都会受影响
+
+去中心化的思路更像这样：
+
+1. 每个机器人 Agent 只维护自己的局部状态：
+   - 当前位置
+   - 当前任务
+   - 电量水平
+   - 下一个目标货架或充电点
+2. 当某台机器人接近狭窄通道时，它不会等一个中央大脑发指令，而是和附近机器人交换最小必要信息：
+   - 谁先进入通道
+   - 谁当前任务更紧急
+   - 谁电量更低，需要优先通行
+3. 如果一台机器人突然故障，其他机器人也不是等中央系统重新排一遍全局计划，而是根据局部可见信息重新接手它没完成的搬运任务。
+4. 如果某个区域临时拥堵，周边机器人会动态绕路、重排优先级，甚至重新协商哪个机器人更适合去接下一单。
+
+这个例子最能体现去中心化的地方在于：
+
+- 没有一个永远在线的“总指挥”替所有节点做决策
+- 每个 Agent 都有自己的局部目标和局部信息
+- 协作靠的是协商、局部路由和动态调整
+- 系统的整体行为是从很多局部决策里长出来的
+
+这也是为什么去中心化总是听起来很迷人：它更抗单点故障，也更像真正的自治网络。
+
+但它难也难在这里：
+
+- 局部最优不一定等于全局最优
+- 没有中心裁决时，冲突解决会很复杂
+- 一旦信任、身份或规则设计不好，系统很容易不收敛
+
+所以这类例子非常能说明“什么叫 decentralized”，也正因为说明得太清楚了，反而更能看出为什么它今天还不是大多数工业系统的默认起点。
+
+</Accordion>
+</Accordions>
+
+## 两个最近很值得看的案例
+
+如果这一节要讲，我觉得就别再讲词义了，直接看案例。
+
+因为今天真正有信息量的，不是 `Agent Team` 和 `Agent Swarm` 这两个词本身，而是：**最近最火、最有代表性的产品，到底把多 Agent 做成了什么样子。**
+
+我会抓两个案例。
+
+### 案例一：Claude Code `Agent Teams`
+
+这是最近最典型的“把多 Agent 做成团队协作产品”的例子。
+
+根据 [Claude Code 官方文档](https://code.claude.com/docs/en/agent-teams)，`Agent Teams` 目前还是 `experimental`，但它已经把很多过去只停留在 demo 里的东西做成了明确机制：
+
+- 一个 `team lead` 负责整体协调
+- 多个 `teammates` 作为独立 session 并行工作
+- 团队围着 `shared task list` 推进
+- 队员之间可以通过 `mailbox` 直接通信
+- 每个 agent 都有自己的上下文窗口，可以单独被打断、重定向和继续执行
+
+这套设计为什么值得看？因为它把多 Agent 最现实的一类需求做出来了：**不是让一群 Agent 一起“思考”，而是让它们像一个真实小组一样分工干活。**
+
+如果再看 [Anthropic 在 2026 年 2 月 5 日发布的《Building a C compiler with a team of parallel Claudes》](https://www.anthropic.com/engineering/building-c-compiler)，这个方向会更清楚。那篇文章最有价值的不是“很多 agent 一起写编译器”这个噱头，而是它把工程上真正难的东西暴露出来了：
+
+- 多个 agent 并行时，怎么避免撞车
+- 谁来锁任务，谁来合并结果
+- 怎么让 review agent 和实现 agent 分开
+- 怎么靠测试和 harness 保证团队没有一起跑偏
+
+所以 Claude Code `Agent Teams` 这个案例真正说明的是：
+
+**MultiAgent 的一个重要方向，不是继续强化单个超级 Agent，而是把任务所有权、并行执行、review 和回收结果做成团队闭环。**
+
+### 案例二：Kimi K2.5 的 `Agent Swarm` / 集群协作
+
+如果说 Claude Code 代表的是“把团队协作产品化”，那 Kimi K2.5 更像另一条线：**把大规模动态拆分和集群协作能力往模型侧推。**
+
+Kimi K2.5 这条线最值得看的，不是名字，而是它背后的协作原理：
+
+- 不是先把角色和 workflow 全部写死
+- 而是围绕大目标，动态决定还要不要继续拆
+- 把并行探索规模直接拉到上百个 sub-agents、上千个协同步骤
+- 同时保留一个可训练的 orchestrator，负责拆解、调度和回收子任务结果
+
+这其实是在做一件很明确的事：把“任务怎么拆、拆到多细、哪些支线该并行”从人工预设流程，往系统自己的调度能力上推。
+
+所以 Kimi 这条线真正想推的，不只是“多起几个 agent”，而是：
+
+- 让系统自己决定该不该继续拆
+- 让并行探索规模大幅上去
+- 让长链路任务不再只能靠人工预先写死 workflow
+- 但同时，又不是完全放弃协调者，而是把协调本身也做成可训练能力
+
+所以这个案例真正值钱的地方，不是 `Swarm` 这个词够不够帅，而是它把另一种多 Agent 方向讲得很具体：
+
+**MultiAgent 不一定只是在 UI 层做团队协作，也可以在模型和 runtime 层把动态拆解、并行扩张、长链路协同本身推到更大规模。**
+
+如果想看它的原始技术描述，可以直接看 [Kimi K2.5 技术报告](https://www.kimi.com/blog/kimi-k2-5.html) 和 [Moonshot 平台的 Agent Support 文档](https://platform.moonshot.ai/docs/guide/agent-support.en-US)。
+
+### 这两个案例合在一起，说明了什么
+
+如果把这两个案例放在一起看，我觉得最值得讲的不是“谁才代表真正的 Team 或 Swarm”，而是它们刚好代表了两种非常现实的演进方向：
+
+- 一种方向是在产品和工作流层，把多 Agent 做成可见的团队协作系统
+- 另一种方向是在模型和 runtime 层，把多 Agent 做成更大规模的动态拆解与并行协同能力
+
+前者更像把组织结构做出来。
+
+后者更像把协作规模做上去。
+
+这两个方向并不冲突，反而很可能会慢慢合流。
+
+未来很可能出现的，不是“Team 打败 Swarm”，而是：
+
+- 上层看起来像一个有 lead、有 reviewer、有 task ownership 的团队
+- 底层实际跑的是更大规模、更动态的 agent cluster 或 agent swarm
+
+![Agent Team 与 Agent Swarm 的对照图](/images/notes/multi-agent/multi-agent-team-vs-swarm.avif)
+
+:::note[这一节真正该记住的]
+看 `Claude Code Agent Teams`，重点看它怎么解决分工、review、任务回收和并行开发。
+
+看 `Kimi K2.5`，重点看它怎么把动态拆分、并行协同和长链路执行做大。
+
+这两个案例真正说明的，不是两个词是什么意思，而是多 Agent 现在正在往哪两边长。
 :::
 
-# 如果只保留一个最小落地顺序
+## 如果不想只看开发者工具，还有这些公开产品也值得看
 
-如果把这篇文章压成一条可执行的路线，我会建议按这个顺序来：
+如果只盯着 `Claude Code` 和 `Kimi`，视野还是太窄了。公开产品里，至少还有下面几类很值得看，而且它们各自代表的问题完全不同。
 
-1. 先把单 Agent 的最小闭环跑稳，至少能读仓库、改代码、跑验证、看失败。
-2. 把 `Spec`、`Context`、`Rules`、权限边界整理出来，不要继续靠聊天上下文硬撑。
-3. 先拆最有价值的两个角色，通常是“实现者”和“验证者”，别一口气造十个 Agent。
-4. 给每个 Agent 建任务契约、超时、步数、升级条件和日志追踪。
-5. 当并行、跨服务、跨仓库协作真的开始频繁出现，再往 Swarm、MCP、A2A 和调度层走。
+- [Microsoft Agent Framework 1.0，2026 年 4 月 3 日](https://devblogs.microsoft.com/agent-framework/microsoft-agent-framework-version-1-0/)
+  这个例子最适合看“多 agent 编排开始从实验框架走向生产 SDK”。它把 `multi-agent orchestration`、跨运行时互通和稳定 API 一起推到 1.0，说明这条线已经不再只是研究玩具。
 
-这个顺序看起来不炫，但工程上更稳。
+- [Oracle Fusion Agentic Applications，2026 年 3 月 24 日](https://www.oracle.com/news/announcement/oracle-introduces-fusion-agentic-applications-2026-03-24/)
+  这个例子最适合看“多 Agent 开始直接长进企业业务软件本体”。它强调的是由一组有不同职责和决策权限的 agent team 去持续推进业务目标，而不是只做一个外挂式助手。
 
-因为 MultiAgent 真正难的，从来不是“再多起几个 agent”，而是让这群 agent 在同一个系统里长期不失控。
+- [IBM watsonx Orchestrate 的 Multi-agent Orchestration 当前产品页](https://www.ibm.com/products/watsonx-orchestrate/orchestrator-agent)
+  这个例子最适合看“多 Agent 已经被做成正式可卖的企业编排层”。它把 supervisor、router、planner、workflow styles 和治理放在同一个产品能力里，讲得非常直接。
+
+- [NVIDIA Multi-Agent Warehouse AI Command Layer，2026 年 1 月 9 日](https://developer.nvidia.com/blog/multi-agent-warehouse-ai-command-layer-enables-operational-excellence-and-supply-chain-intelligence/)
+  这个例子最适合看“MultiAgent 不只发生在聊天窗口，也会进入物理世界的运营系统”。它把仓储里的设备、人员、安全、预测、文档理解拉进同一个 command layer，很适合说明多 agent 为什么会长到真实业务系统里。
+
+- [Kimi K2.5，2026 年 1 月](https://www.kimi.com/blog/kimi-k2-5.html)
+  这个例子最适合看“模型侧怎么把 cluster 协作和动态拆解往更大规模推”。它代表的不是传统工作流编排，而是更底层的 agent cluster 能力。
+
+- [Anthropic《Building a C compiler with a team of parallel Claudes》，2026 年 2 月 5 日](https://www.anthropic.com/engineering/building-c-compiler)
+  这个例子最适合看“多 Agent 公开案例里，真正难的是怎么组织团队而不是怎么凑人数”。它把并行开发、review、测试、任务锁定和结果回收写得非常具体。
+
+- [Oracle AI Agents for Supply Chain，2026 年 2 月 10 日](https://www.oracle.com/news/announcement/oracle-ai-agents-help-boost-supply-chain-efficiency-and-strengthen-resiliency-2026-02-10/)
+  这个例子最适合看“多 Agent 怎么进入高约束、强流程、跨职能的企业场景”。它不是在讲一个抽象 agent，而是在讲供应链计划、采购、制造、物流这些角色怎么被 agent 化。
+
+## 把这些形态压成一张表
+
+如果只想先建立一个最小判断框架，可以先记这张表。
+
+| 形态 | 最像什么 | 适合什么 | 主要代价 |
+| ---- | ---- | ---- | ---- |
+| 监督者 / Orchestrator-Worker | 项目经理带专项同事 | Research、宽搜型复杂任务 | supervisor 瓶颈、单点失效 |
+| 流水线 / Graph Workflow | 审批流、接力链 | 企业流程、长任务 | 前序错误级联、灵活性弱 |
+| 评审 / 辩论 / Committee | 评审会 | 高不确定性推理、红队、方案评审 | 成本高、容易多数谬误 |
+| 共享状态 / Blackboard | 围着同一块白板工作 | 可回放、可恢复、可审计系统 | 状态设计和并发复杂 |
+| 事件驱动 / Async | 消息队列、事件总线 | 多系统集成、异步 runtime | 调试、重试、幂等困难 |
+| 对等 / 去中心化 | 多个独立组织协作 | 跨组织、强隐私边界场景 | 治理、收敛、信任最难 |
+
+这张表背后不是我自己拍脑袋分的，而是综合了 [IJCAI 2024 survey](https://www.ijcai.org/proceedings/2024/890)、[Anthropic 的 industrial case](https://www.anthropic.com/engineering/built-multi-agent-research-system)、[AutoGen](https://www.microsoft.com/en-us/research/publication/autogen-enabling-next-gen-llm-applications-via-multi-agent-conversation-framework/)、[LangChain/LangGraph 文档](https://docs.langchain.com/oss/python/langchain/multi-agent/index)、[Multi-LLM Debate](https://openreview.net/forum?id=sy7eSEXdPC) 和 [AgentNet](https://openreview.net/forum?id=tXqLxHlb8Z) 这些资料。
+
+更有意思的是，不同来源之间其实有明显分歧。
+
+- 工业界更偏中心化，因为更好 debug，更好加护栏。
+- 研究界更愿意推去中心化，因为中心化天然有单点瓶颈和隐私边界问题。
+- 一部分综述会把今天很多系统都算作 MultiAgent；但 [《Large Language Models Miss the Multi-agent Mark》](https://openreview.net/forum?id=FfsxgSZW0c) 这类研究会提醒你：很多现在被叫作 multi-agent 的系统，本质上更像“多个 LLM 角色一起干活”，还没到传统多智能体理论里那种高度自治、彼此持续互动、还会被环境实时反馈牵着走的程度。
+
+:::note[一个现实判断]
+今天工业界主流公开案例，仍然明显偏中心化监督者和工作流编排。
+
+去中心化很重要，但至少从公开的一手生产经验来看，它还不是主流落地方向。
+:::
+
+# 底层关键技术：别把 Workflow、Memory、MCP、A2A 写成一团
+
+很多讨论一到这里就开始堆词：
+
+- skill
+- memory
+- shared state
+- orchestration
+- event bus
+- MCP
+- A2A
+
+最后读完只剩一种感觉：好像什么都重要，但又不知道它们到底是不是同一层。
+
+问题往往不在于资料不够，而在于这些词其实在回答完全不同的问题：
+
+- `skill` 回答的是“这个 Agent 被封装成擅长哪类任务”
+- `workflow` 回答的是“任务怎么往前走”
+- `memory` 回答的是“系统怎么记住东西”
+- `MCP` 回答的是“Agent 怎么接工具和资源”
+- `A2A` 回答的是“不同 Agent 服务怎么互通”
+
+它们本来就不是同类东西，硬写在一层当然会乱。
+
+我更建议把 MultiAgent 的底层技术拆成五层。
+
+| 层级 | 它真正回答什么问题 | 常见内容 |
+| ---- | ---- | ---- |
+| 执行与能力层 | 单个 Agent 到底能做什么 | reasoning、tool calling、Skills、MCP、检索、代码执行、外部 API |
+| 上下文与状态层 | Agent 靠什么维持连续性 | session、memory、shared state、artifact、summary |
+| 编排与协作层 | 多个 Agent 怎么分工 | supervisor、workflow、committee、blackboard |
+| 通信与任务层 | Agent 之间怎么交换工作 | direct messaging、broadcast、handoff、task lifecycle |
+| 跨系统互通与服务边界层 | 独立 Agent 服务跨边界怎么接起来 | A2A、认证、发现、版本兼容、service boundary |
+
+![MultiAgent 底层关键技术五层结构图](/images/notes/multi-agent/multi-agent-stack-layers.avif)
+
+:::tip[这一节不要按名词背]
+真正有用的读法不是把这五层硬记下来，而是每次碰到一个词，先问它到底在回答哪类问题：
+
+- 单个 Agent 的能力问题
+- 状态怎么维持的问题
+- 多 Agent 怎么分工的问题
+- 工作怎么流转的问题
+- 独立服务怎么跨边界互通的问题
+
+层级一分开，很多原本看起来缠在一起的讨论会立刻清楚很多。
+:::
+
+## 第 1 层：执行与能力层
+
+这一层最容易理解，它回答的是：
+
+**单个 Agent 到底能做什么。**
+
+比如：
+
+- 会不会推理
+- 会不会调工具
+- 有没有相关 `Skill`
+- 能不能通过 `MCP` 接工具和资源
+- 能不能查知识库
+- 能不能跑代码
+- 能不能调外部 API
+
+如果没有这一层，后面所有“多 Agent 协作”都没意义，因为连单个节点能干什么都不成立。
+
+所以这层更像每个 Agent 的“手脚”和“工具箱”。
+
+<Accordions type="multiple">
+<Accordion title="Example：一个支付故障处理 Agent，怎么同时用上这一层的几种能力" id="skill-capability-example">
+
+还是拿前面那个高优工单来举例：
+
+“企业客户被重复扣费，同时管理员账号登不上去。”
+
+假设现在不是拆成多个 Agent，而是先看一个单独的 `billing-resolution-agent` 自己到底能干什么。
+
+如果这一层够强，它通常至少会同时用到这几类能力：
+
+1. **推理**
+   先判断这是“重复扣费”还是“支付回调和本地订单状态不一致”，决定先查哪条链路。
+
+2. **知识检索**
+   去查团队内部的支付 SOP、退款规则、历史事故复盘，确认这类故障以前是不是出现过。
+
+3. **工具调用**
+   调账单数据库、支付服务日志、告警平台和审计系统，看两笔扣款到底是不是来自同一个订单。
+
+4. **代码执行**
+   临时跑一段脚本，把最近 24 小时同类订单的支付状态批量拉出来，对比有没有异常模式。
+
+5. **外部 API**
+   必要时直接调支付提供商的查询接口，看第三方侧返回的 transaction 状态是什么。
+
+6. **相关 `Skill`**
+   如果系统给它配了一套支付排查模板或 checklist，它就能更稳定地按“先查账单、再查回调、再查退款保护、最后给客户摘要”这条顺序推进。
+
+7. **`MCP` 工具接入**
+   如果团队把 Stripe 查询、内部知识库和工单数据库都通过 `MCP` 暴露出来，那这个 Agent 就能直接把这些外部工具和资源接进自己的执行链路。
+
+这个例子想说明的重点很简单：
+
+- 这一层关心的是“一个 Agent 手上到底有什么能力”
+- 不是它怎么和别人分工
+- 也不是它和外部 Agent 服务怎么互通
+
+换句话说，到了这一层，问题还没进入 multi-agent 的组织复杂度，重点只是：**单个节点够不够能干。**
+
+</Accordion>
+</Accordions>
+
+## 第 2 层：上下文与状态层
+
+这一层回答的是：
+
+**系统靠什么维持连续性。**
+
+这里最容易混淆三个词：
+
+- `memory`
+- `shared state`
+- `artifact`
+
+但它们其实不是一回事。
+
+- `memory` 更像记忆。
+  比如系统记得这个用户之前问过什么、上一次推理得出了什么中间结论。
+- `shared state` 更像当前局势面板。
+  比如现在工单状态是 `high-priority`，退款检查已经完成，权限检查还没完成。
+- `artifact` 更像阶段性产物。
+  比如一份摘要、一张表、一段 JSON 结果、一版中间报告。
+
+如果把它们翻成人话：
+
+- memory 是“记住过什么”
+- state 是“现在局面是什么”
+- artifact 是“已经产出了什么”
+
+这三者一混，系统设计就会开始发虚。
+
+<Accordions type="multiple">
+<Accordion title="Example：同一张工单里，memory、state、artifact 到底分别是什么" id="state-layer-example">
+
+还是拿企业客服系统举例：
+
+“企业客户被重复扣费，同时管理员账号登不上去。”
+
+如果只看这一层，最关键的不是谁来处理，而是系统到底怎么“记”。
+
+`memory` 更像长期记忆：
+
+- 这个客户过去 30 天报过两次支付异常
+- 这个工作区上周刚做过 RBAC 迁移
+
+`shared state` 更像当前局势面板：
+
+- `severity = high`
+- `billing_check = done`
+- `auth_check = pending`
+- `human_escalation = false`
+
+`artifact` 更像已经产出的阶段性结果：
+
+- 一份“重复扣费分析摘要”
+- 一段给客户的临时说明草稿
+- 一份待人工确认的退款建议单
+
+所以这一层真正要分清的，不是“系统有没有记忆”，而是：
+
+- 哪些东西属于长期记忆
+- 哪些东西属于当前状态
+- 哪些东西属于已经产出的中间结果
+
+</Accordion>
+</Accordions>
+
+## 第 3 层：编排与协作层
+
+这一层回答的是：
+
+**多个 Agent 怎么分工。**
+
+也就是前面刚讲过的那些形态：
+
+- supervisor-worker
+- workflow
+- committee
+- blackboard
+- async
+- decentralized
+
+这一层说的不是工具，不是协议，而是“组织结构”。
+
+如果把 MultiAgent 比作一个团队，这一层回答的就是：
+
+- 谁带队
+- 谁做什么
+- 谁和谁协作
+- 出问题时谁兜底
+
+这一层决定的是角色划分和控制拓扑，不回答独立 Agent 服务跨边界怎么接起来；那是下一层的问题。
+
+<Accordions type="multiple">
+<Accordion title="Example：同一个问题，编排层的设计为什么会完全改变系统行为" id="orchestration-layer-example">
+
+还是同一张高优工单：
+
+“企业客户被重复扣费，同时管理员账号登不上去。”
+
+如果编排层设计成 supervisor-worker：
+
+- triage Agent 先判断这是支付 + 权限的混合问题
+- billing Agent 查扣费
+- auth Agent 查登录失败
+- reply Agent 汇总
+
+那系统重点就是“主脑拆题，专项执行，最后汇总”。
+
+但如果编排层设计成 committee：
+
+- 一个 Agent 从财务视角判断
+- 一个 Agent 从安全视角判断
+- 一个 Agent 专门挑结论漏洞
+- 最后一个 judge 汇总
+
+那系统重点就从“执行分工”变成了“多视角评审”。
+
+再如果编排层设计成 workflow：
+
+- 先分类
+- 再查支付
+- 再查权限
+- 最后出客户说明
+
+那系统重点又变成了“按固定顺序推进”。
+
+所以编排层真正决定的，不是单个 Agent 能不能干活，而是：**这些 Agent 以什么组织方式协作。**
+
+</Accordion>
+</Accordions>
+
+## 第 4 层：通信与任务层
+
+这一层回答的是：
+
+**工作在节点之间怎么移动。**
+
+比如：
+
+- 一条消息直接发给某个 Agent
+- 广播给一组订阅者
+- handoff 给更合适的 Agent
+- 建一个 task，再持续更新它的状态
+
+这一层更像系统里的“任务流转机制”。
+
+为什么很多人会把它和 workflow 混掉？因为它们确实紧挨着。但区别很重要：
+
+- `workflow` 更像流程图
+- `communication / task layer` 更像流程图里的线、消息和任务状态
+
+一个系统可以有 workflow，但用 very simple direct message。
+一个系统也可以没有固定 workflow，却靠 event bus 和 task lifecycle 协作。
+
+<Accordions type="multiple">
+<Accordion title="Example：通信与任务层关心的是‘活怎么流’，不是‘谁负责什么’" id="task-layer-example">
+
+假设 triage Agent 已经判定出这是支付 + 权限的混合问题。
+
+这时候编排层已经决定了要拆给 billing Agent 和 auth Agent，但真正的“工作怎么流”，是通信与任务层在管。
+
+比如可以这样流：
+
+1. triage Agent 创建两个 task：
+   - `billing_investigation`
+   - `auth_investigation`
+2. billing Agent 接到任务后，把状态更新成 `in_progress`
+3. auth Agent 处理到一半，如果发现命中高危权限风险，再额外发一个 `security_review_required` 事件
+4. reply Agent 不直接盯两个人的聊天，而是监听这几个 task 和事件状态
+5. 当两个 task 都完成，且没有新的 blocking event 时，reply Agent 才开始生成最终答复
+
+这里的关键是：
+
+- task 在流
+- message 在流
+- event 在流
+
+这一层关心的是这些“流转机制”本身，而不是系统到底选 supervisor-worker 还是 committee。
+
+</Accordion>
+</Accordions>
+
+## 第 5 层：跨系统互通与服务边界层
+
+这一层回答的是：
+
+**独立 Agent 服务跨系统、跨团队、跨框架怎么接起来。**
+
+[A2A](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/) 在这一层更关键，因为它主要解决的是：
+
+- 一个 Agent 服务怎么把任务交给另一个 Agent 服务
+- 怎么持续跟踪任务状态
+- 怎么交换结果和中间产物
+
+这一层真正关心的是这些问题：
+
+- 这个服务是谁
+- 它暴露哪些能力
+- 怎么发现它
+- 怎么认证和授权
+- 怎么保证版本兼容
+
+更关键的是，**不是所有 MultiAgent 都必须上这一层的标准协议**。
+
+[Google 的 ADK 文档](https://google.github.io/adk-docs/a2a/intro/) 就明确区分 `local sub-agents` 和 `remote agents`。如果你的系统主要是本地子代理、共享内存、低延迟内部协作，那跨系统互通这层根本不一定需要很重的标准化。到了真的存在独立 Agent 服务、跨团队边界、跨框架边界时，`A2A` 这类协议才会开始变得值钱。
+
+![本地子代理与远程 Agent 服务边界示意图](/images/notes/multi-agent/multi-agent-local-vs-remote-boundary.avif)
+
+<Accordions type="multiple">
+<Accordion title="Example：什么时候问题已经进入‘跨系统互通与服务边界层’" id="infra-layer-example">
+
+假设还是这个企业客服系统，但这次看的是一个更具体的边界：
+
+客服系统自己不做退款审批，而是把“是否允许退款”交给另一个独立的财务 Agent 服务。
+
+这时候问题已经不再是“单个 Agent 会不会接工具”，而是：
+
+- 这个财务 Agent 服务是谁提供的
+- 客服系统怎么发现它
+- 请求是怎么认证的
+- 任务发过去之后怎么持续跟踪状态
+- 最后怎么拿回审批结果和中间产物
+
+比如可以这样理解：
+
+1. 客服 Agent 先把工单整理成一份退款审批请求。
+2. 它不是直接去查工具，而是把这个请求发给一个独立的财务 Agent 服务。
+3. 财务 Agent 服务收到后，自己内部再去查账单、规则、审批权限。
+4. 客服系统不需要知道财务服务内部怎么做推理，但必须知道：
+   - 任务有没有收到
+   - 现在进行到哪
+   - 最后批没批准
+   - 返回的结果结构是什么
+
+这时候你就会发现，这一层处理的已经是：
+
+- 服务与服务之间怎么通
+- 边界两边怎么达成契约
+- 跨边界协作怎么可追踪、可恢复、可兼容
+
+</Accordion>
+</Accordions>
+
+:::warning[最容易误写的一句]
+不要把跨系统互通这一层理解成“所有多 Agent 系统都必须上标准协议”。很多系统在本地 runtime 里就能协作得很好，只有真的跨服务、跨团队、跨框架时，这一层的成本和价值才会同时变高。
+:::
+
+# 设计原则：真正难的不是“多开几个 Agent”
+
+如果把 [Anthropic](https://www.anthropic.com/engineering/building-effective-agents)、[Microsoft](https://www.microsoft.com/en-us/research/publication/interactive-debugging-and-steering-of-multi-agent-ai-systems/)、[OpenReview 的 failure taxonomy](https://openreview.net/forum?id=wM521FqPvI) 和 [Why Do Multi-Agent LLM Systems Fail?](https://openreview.net/forum?id=MqBzKkb8eK) 放在一起看，比较稳的原则大概有七条。
+
+如果只把这七条原则写成一句话一句话，它们确实很容易发虚。更有用的方式，是把它们放回几个反复出现的工程矛盾里看。
+
+:::important[做系统评审时，至少先连问四句]
+- 为什么不是单 Agent 或简单 workflow
+- 谁拿什么上下文和工具
+- 谁负责独立验收
+- 长任务失败后怎么恢复
+
+如果这四句答不出来，系统大概率还没准备好进生产。
+:::
+
+![MultiAgent 生产护栏与治理重点示意图](/images/notes/multi-agent/multi-agent-production-guardrails.avif)
+
+## 第一组：不是“能拆就拆”，而是“拆了以后有没有净收益”
+
+第一条原则其实最重要：
+
+**先证明单 Agent 或简单 workflow 不够，再上 MultiAgent。**
+
+这句话听起来保守，但它其实是在帮系统省掉大量伪复杂度。
+
+很多团队一上来就想加更多 Agent，本质上是把“任务定义不清、工具接入混乱、验证链不完整”这些更底层的问题，伪装成“需要更多角色”。结果不是系统更强，而是混乱被复制了更多份。
+
+这组原则真正对应的是两个判断：
+
+1. 当前任务到底有没有明显的可拆分收益？
+2. 拆完之后，职责是不是更清楚了，而不是更模糊了？
+
+所以这组里有两条常常要一起看：
+
+- 先证明单 Agent 或简单 workflow 不够
+- 职责分离比堆数量更重要
+
+真正值钱的拆法，通常不是“从 1 个 Agent 变成 8 个 Agent”，而是把原来混在一起的几种责任拆开，比如：
+
+- 规划和执行分开
+- 执行和验收分开
+- 对外沟通和内部分析分开
+
+如果拆完之后，每个 Agent 还是在做一团混合职责，那它只是从“一个大黑盒”变成了“三个小黑盒”。
+
+## 第二组：不是“上下文越多越好”，而是“上下文和工具都要做减法”
+
+很多 MultiAgent 系统看上去像是因为模型不够强才翻车，实际上更常见的原因是：
+
+- 每个 Agent 拿到的上下文太杂
+- 工具挂得太多
+- 同类能力重叠太严重
+
+所以第二组原则，核心其实是“减法”：
+
+- 上下文要最小高信号，不要做全量广播
+- 工具和 Agent 都不是越多越好，过多会互相干扰
+
+这两条放在一起看，意思就很清楚了：
+
+一个 Agent 不应该因为“也许有用”就被塞进全部历史、全部规则、全部工具。真正稳的系统，通常会把上下文裁成任务需要的最小集合，把工具裁成角色需要的最小集合。
+
+否则就会出现两种非常典型的故障：
+
+- 上下文噪声过高，模型抓不住真正权威的信息
+- 工具过载，模型在一堆相似能力里来回试错，最后反而更慢、更乱、更贵
+
+这类问题在单 Agent 里已经常见，到了 MultiAgent 里只会被放大。
+
+## 第三组：不是“能跑完就行”，而是“谁来证明它真的做对了”
+
+很多多 Agent 系统的危险，不在执行，而在验收。
+
+如果一个系统里：
+
+- 负责做事的 Agent 自己判断自己有没有做好
+- 负责写结果的 Agent 自己决定结果够不够可信
+- 负责调用工具的 Agent 自己解释工具输出有没有问题
+
+那它很容易一路自洽到底。
+
+所以第三组原则是：
+
+- 验收权最好和执行权分开
+- 可观测性必须内建，而且不能只看日志
+
+这两条之所以经常要放在一起，是因为它们本质上都在回答一个问题：
+
+**系统拿什么来反驳自己。**
+
+执行权和验收权分开，解决的是“不要让同一个脑回路从头判到尾”。
+
+可观测性内建，解决的是“即使它做错了，人能不能看见它到底错在哪”。
+
+:::note[Reflection 很有用，但它不等于独立验收]
+很多团队会把 `Reflection` 当成万能纠错机制，比如让 agent 在完成后再自我复盘一轮、再挑一轮自己的漏洞。
+
+这当然有价值，但它解决的更像“同一个执行链能不能自我修正一点”，不是“系统有没有独立的证明机制”。
+
+如果执行者、反思者、总结者本质上还是同一条脑回路，那它仍然可能一路自洽到底，只是自洽得更认真了一点。
+:::
+
+:::important[`evaluation` 真正回答的是“怎么证明它做对了”]
+到了多 Agent 系统里，`evaluation` 不该再只是“最后看起来像不像对”。
+
+更稳的 `evaluation` 往往至少要落到这些东西里：
+
+- end-state checks：最终状态到底有没有达到目标
+- constraint checks：有没有触碰明确禁止的边界
+- regression checks：有没有把原本正常的链路带坏
+- judge / reviewer：有没有独立于执行链的审查视角
+- trace-based review：出了问题时，能不能顺着轨迹定位是哪一层先歪了
+
+换句话说，`Reflection` 更像过程内自检，`evaluation` 才是系统级验收。
+:::
+
+而且今天讲 observability，已经不能再只理解成：
+
+- 有没有日志
+- 有没有 trace id
+- 有没有耗时指标
+
+更关键的其实是：
+
+- 有没有看得懂的任务轨迹
+- 有没有中间状态
+- 有没有失败分类
+- 有没有办法知道是 spec 错了、路由错了、工具错了，还是验收错了
+
+否则系统一复杂，最后就只剩一句“它又跑偏了”，但没人知道到底哪里偏了。
+
+## 第四组：不是“能 demo 出来”，而是“能不能长期跑而不失控”
+
+到了生产环境，很多问题就不再是“这次能不能跑通”，而是：
+
+- 跑到一半挂了怎么办
+- 升级部署时断了怎么办
+- 长任务能不能从中间恢复
+- 权限和边界出了问题谁负责
+
+所以最后一组原则是：
+
+- 长任务系统必须支持持久化、检查点和恢复
+
+这条看起来像运行时细节，但它其实很核心。因为一旦进入多 Agent 长任务，错误不再只是“一次答错”，而会变成：
+
+- 状态错着往后传
+- 子任务错着继续扩散
+- 中途失败后全部从头再来
+- 系统越来越贵，但没有越来越稳
+
+这也是为什么很多公开的一手经验最后都会落到同一个方向：MultiAgent 不是玩一次性的编排炫技，而是要把状态、恢复、治理和失败隔离都做成长期机制。
+
+## 这些原则到底在防什么
+
+如果把这些原则压回 failure taxonomy，它们大概在防四类大坑：
+
+| 原则组 | 主要在防什么 |
+| ---- | ---- |
+| 先证明单 Agent 不够；职责分离优先于堆数量 | 规格层失败、组织层失败 |
+| 上下文做减法；工具和 Agent 不要过载 | 协调层失败、工具生态失败 |
+| 验收权分离；可观测性内建 | 验证层失败、可观测性失败 |
+| 持久化、检查点、恢复 | 运行时失败、安全与治理失败 |
+
+| 失败类型 | 最常见表现 |
+| ---- | ---- |
+| 规格层失败 | 角色定义模糊、目标不清、完成条件缺失 |
+| 组织层失败 | 任务拆分差、边界不清、delegate 错位 |
+| 协调层失败 | 多个 Agent 冲突、状态不同步、异步级联错误 |
+| 验证层失败 | 没有独立验收，只看过程，不看结果 |
+| 运行时失败 | 长任务错误累积、恢复困难、部署打断运行中任务 |
+| 可观测性失败 | trace 太长找不到问题，只能靠猜 |
+| 工具生态失败 | 工具过多、能力重叠、schema 和 description 不清 |
+| 安全与治理失败 | 权限失控、隐私泄露、跨 Agent collusion、缺少问责 |
+
+我很喜欢这类 failure taxonomy 的原因就在这儿：
+
+它逼着我们承认一件事：MultiAgent 的难点从来不只是“让它们协作起来”，而是“让它们在现实系统里长期不失控”。
+
+# 到 2026 年 4 月，再看 MultiAgent：真正收束出的几件事
+
+把最近 3 到 6 个月的一手资料放在一起看，至少有五个判断已经比较稳定。
+
+## 第一，它先收束成“有组织的执行系统”，不是“更多聊天角色”
+
+最近半年最有代表性的公开材料，其实已经把方向讲得很清楚了。
+
+[Anthropic 在 2026 年 2 月 5 日发布的《Building a C compiler with a team of parallel Claudes》](https://www.anthropic.com/engineering/building-c-compiler) 讲得很具体：真正难的不是多开几个 session，而是任务怎么锁、结果怎么合、review 怎么插进去、harness 和测试怎么兜底。另一边，模型侧也已经开始把更大规模的动态拆分和并行调度往前推，像 [K2.5 技术报告](https://www.kimi.com/blog/kimi-k2-5.html) 里展示的，就是让 orchestrator 去动态拆任务、回收结果，而不是先把流程全写死。
+
+这几条线合在一起，其实已经很说明问题了：
+
+**MultiAgent 到今天先成熟的，不是“大家一起聊”，而是“有人负责任务组织，有人负责并行执行，有机制负责把结果收回来”。**
+
+## 第二，它先收束成“长任务 runtime”，不是“一次性 prompt 技巧”
+
+最近 3 到 6 个月里，最明显的变化之一，就是大家已经不再把 agent 当成一次性会话了。
+
+[Anthropic 在 2025 年 11 月 26 日写 long-running harnesses](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)，核心就是怎么跨上下文窗口持续推进任务；OpenAI 现在的文档里也把 [background mode](https://platform.openai.com/docs/guides/background)、[conversation state](https://platform.openai.com/docs/guides/conversation-state?api-mode=responses) 这些能力直接做成平台原语。
+
+这背后其实说明了同一件事：
+
+**真正可用的 MultiAgent，已经越来越像一个长任务 runtime。**
+
+它必须解决的，不再只是“这次能不能答出来”，而是：
+
+- 任务跑很久怎么办
+- 中途断了怎么办
+- 上下文滚太长怎么办
+- 哪些信息该进 `memory`，哪些该进 `state`，哪些该落成 `artifact`
+
+也就是说，前面文章里讲的那套分层，到这里已经不是写作框架，而是产品现实了。
+
+## 第三，它先收束成“可验收、可追踪、可恢复”，不是“能跑完就算赢”
+
+如果只看最近一两个月的官方文档，这个信号已经非常强。
+
+OpenAI 现在把 [Agent evals](https://platform.openai.com/docs/guides/agent-evals)、[trace grading](https://platform.openai.com/docs/guides/trace-grading)、[Agent Builder](https://platform.openai.com/docs/guides/agent-builder) 放在一条线上讲；Microsoft 则在 [2026 年 3 月 28 日更新的 Foundry tracing 文档](https://learn.microsoft.com/en-us/azure/ai-foundry/observability/concepts/trace-agent-concept?view=foundry) 里，直接把 multi-agent observability 往 OpenTelemetry 语义约定上推。
+
+这说明什么？
+
+说明行业已经不再把“agent 跑起来了”当成终点，而是开始把下面这些问题当成一等问题：
+
+- 最终结果到底做没做对
+- 哪一步先歪了
+- 是路由错了，还是工具错了，还是验收错了
+- 出问题之后能不能从中间恢复，而不是整条链重跑
+
+所以今天真正拉开差距的，已经不是“谁的 prompt 更玄”，而是：
+
+**谁的系统能被看见，能被验收，能被恢复。**
+
+## 第四，它先收束成“边界协议化”，但不是“一个协议统一世界”
+
+**到 2026 年，这一层真正发生的变化，是 agent 的边界开始被正式协议化。**
+
+[Anthropic 在 2025 年 12 月 9 日把 MCP 捐给 Agentic AI Foundation](https://www.anthropic.com/news/donating-the-model-context-protocol-and-establishing-of-the-agentic-ai-foundation)，已经说明它不再只是某一家公司的私有约定；[MCP 在 2026 年 1 月 26 日把 `MCP Apps` 变成官方扩展](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/)，说明它开始覆盖 UI 和交互能力；[2026 年 3 月 9 日的 roadmap](https://blog.modelcontextprotocol.io/posts/2026-mcp-roadmap/) 又把 `agent communication`、`enterprise readiness` 这些问题摆上主线。
+
+如果把这些变化压成一句话，就是：
+
+**过去大家是在写胶水代码接边界，现在大家开始认真把边界本身做成协议。**
+
+但这不等于会出现一个“一统天下”的协议。到今天为止，更像是：
+
+- 能力接入是一层边界
+- UI / 人机交互是一层边界
+- 远程 agent / 服务互通又是另一层边界
+
+所以真正收束出的，不是“大一统”，而是“分层协议化”。
+
+## 第五，它没有收束成“多 Agent 默认更强”
+
+这一点反而是最近的官方文档里越来越诚实的地方。
+
+[OpenAI 最新的 evaluation best practices](https://platform.openai.com/docs/guides/evaluation-best-practices) 已经直接写了：是否使用 multi-agent architecture，应该由 evals 驱动。也就是说，多 Agent 不是默认答案，而是结构选择。
+
+这和前面讲过的案例也一致。并行开发、review、任务拆分边界清楚的工作，很适合团队式多 Agent；复杂长任务、宽搜索、动态拆解收益很高的工作，也确实能从更大规模的并行协同里获益。
+
+但没有任何一条严肃的一手材料在认真说：“从现在开始，所有高级 agent 都必须 multi-agent。”
+
+所以到 2026 年 4 月，更稳的总结其实不是“MultiAgent 已经证明自己一定是未来”，而是：
+
+**MultiAgent 已经证明自己在某些任务形态下非常值钱，但它依然是一种结构优势，不是默认信仰。**
+
+:::important[这一节最后只记一句]
+到 2026 年 4 月，MultiAgent 真正收束出的，不是一个更响的新名词，而是一套更像工程系统的共识：有组织、有状态、可验收、可恢复、边界清楚，而且只在真正值得拆的时候才去拆。
+:::
 
 # 延伸阅读
 
-如果想继续往下挖，下面这些官方材料值得直接读原文：
+如果想继续往下挖，我建议按三组来读。
+
+## 官方工程与协议
 
 - [Anthropic: Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents)
 - [Anthropic: How we built our multi-agent research system](https://www.anthropic.com/engineering/built-multi-agent-research-system)
+- [Anthropic: Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+- [OpenAI: New tools for building agents](https://openai.com/index/new-tools-for-building-agents/)
+- [OpenAI: Introducing deep research](https://openai.com/index/introducing-deep-research/)
 - [Model Context Protocol 官方文档](https://modelcontextprotocol.io/introduction)
-- [Google Developers Blog: A2A, a new era of agent interoperability](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)
-- [LangChain / LangGraph: Multi-agent](https://docs.langchain.com/oss/python/langchain/multi-agent)
-- [AI SDK Agents Overview](https://ai-sdk.dev/docs/agents/overview)
-- [Mastra 官方文档](https://mastra.ai/docs)
-- [LangGraph 官方文档](https://langchain-ai.github.io/langgraph/)
+- [MCP Specification Overview](https://modelcontextprotocol.io/specification/2025-06-18/basic/index)
+- [Google Developers Blog: A2A](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)
+- [A2A Specification](https://google-a2a.github.io/A2A/specification/)
+
+## 综述与失败分析
+
+- [IJCAI 2024: Large Language Model Based Multi-agents: A Survey of Progress and Challenges](https://www.ijcai.org/proceedings/2024/890)
+- [OpenReview: Large Language Model based Multi-Agents](https://openreview.net/forum?id=0TDpNKwmF2)
+- [OpenReview: Multi-Agent Collaboration Mechanisms: A Survey of LLMs](https://openreview.net/forum?id=Et63kNQxL7)
+- [OpenReview: Why Do Multiagent Systems Fail?](https://openreview.net/forum?id=wM521FqPvI)
+- [OpenReview: Why Do Multi-Agent LLM Systems Fail?](https://openreview.net/forum?id=MqBzKkb8eK)
+- [OpenReview: Multi-LLM Debate](https://openreview.net/forum?id=sy7eSEXdPC)
+- [OpenReview: AgentNet](https://openreview.net/forum?id=tXqLxHlb8Z)
+- [OpenReview: Large Language Models Miss the Multi-agent Mark](https://openreview.net/forum?id=FfsxgSZW0c)
