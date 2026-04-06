@@ -1,12 +1,19 @@
 # AI 原生工程：Vibe Coding 进阶与全域自动化落地
 
-[![Netlify Status](https://img.shields.io/website?url=https%3A%2F%2Fai-native-engineering.netlify.app&up_message=online&down_message=offline&up_color=00C7B7&down_color=ef4444&style=flat-square&label=Netlify&logo=netlify&logoColor=white)](https://ai-native-engineering.netlify.app)
+[![GitHub Stars](https://img.shields.io/github/stars/TatsukiMeng/ai-native-engineering?style=flat-square&logo=github&label=Stars)](https://github.com/TatsukiMeng/ai-native-engineering/stargazers)[![Netlify Status](https://img.shields.io/website?url=https%3A%2F%2Fai-native-engineering.netlify.app&up_message=online&down_message=offline&up_color=00C7B7&down_color=ef4444&style=flat-square&label=Netlify&logo=netlify&logoColor=white)](https://ai-native-engineering.netlify.app)
 
 这不是一本“AI 工具大全”，也不是把一堆新名词摊开讲一遍的科普手册。
 
 这个仓库真正想做的，是把 AI 编程从“偶尔好用的外挂”，写成一套能做大项目、能持续交付、出了问题也知道怎么兜底的工程工作流。
 
 现在看到的不是终稿，更像是一份正在持续生长的书稿现场：目录会调整，章节会重写，实战项目的边界也会继续收敛。这里既是写书的工作区，也是文档站和后续案例代码的基建仓库。
+
+## 快速入口
+
+- [行为准则](CODE_OF_CONDUCT.md)
+- [协作说明](CONTRIBUTING.md)
+- [仓库协作规范](AGENTS.md)
+- [当前目录主线](OUTLINE.md)
 
 ## 这本书到底在写什么
 
@@ -44,6 +51,7 @@
 ├── docs/                 # Fumadocs 文档站，也是书稿主要落点
 ├── OUTLINE.md            # 当前目录主线与写作规划
 ├── AGENTS.md             # 仓库协作规范，AI 和人都要遵守
+├── CODE_OF_CONDUCT.md    # 项目行为准则
 ├── CONTRIBUTING.md       # 协作说明
 └── README.md             # 项目说明与当前进度
 ```
@@ -120,6 +128,7 @@ bun run start
 如果准备直接改仓库内容，先看这几个文件：
 
 - `AGENTS.md`：最重要，里面有写作风格、术语规范、目录规则、AI 协作要求。
+- `CODE_OF_CONDUCT.md`：项目行为准则，讨论问题可以尖锐，但不要越界到对人。
 - `OUTLINE.md`：看清现在这本书的主线到底怎么排。
 - `CONTRIBUTING.md`：补充性的协作说明。
 
