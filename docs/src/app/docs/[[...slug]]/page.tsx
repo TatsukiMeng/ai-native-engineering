@@ -27,6 +27,24 @@ const aliasSlugs = [
   ["05-scale"],
 ] as const;
 
+function isOverviewSlug(slugs: string[]) {
+  const last = slugs.at(-1);
+  return last === "00-overview" || last === "overview";
+}
+
+function getOverviewAliasParams() {
+  const aliases = source
+    .getPages()
+    .map((page) => page.slugs)
+    .filter(isOverviewSlug)
+    .map((slugs) => slugs.slice(0, -1))
+    .filter((slugs) => slugs.length > 0);
+
+  return Array.from(
+    new Map(aliases.map((slug) => [slug.join("/"), { slug }])).values(),
+  );
+}
+
 function resolvePageFromSlug(slug?: string[]) {
   if (!slug || slug.length === 0) {
     return source.getPage(["preface"]);
@@ -187,6 +205,7 @@ export async function generateStaticParams() {
   return [
     { slug: [] },
     ...aliasSlugs.map((slug) => ({ slug: [...slug] })),
+    ...getOverviewAliasParams(),
     ...source.generateParams(),
   ];
 }
