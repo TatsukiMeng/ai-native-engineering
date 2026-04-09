@@ -39,6 +39,16 @@ export function Footer() {
             Fumadocs
           </a>
           <br />
+          This site is powered by{" "}
+          <a
+            className="font-medium text-fd-primary underline"
+            target="_blank"
+            rel="noreferrer"
+            href="https://www.netlify.com"
+          >
+            Netlify
+          </a>
+          <br />
           Theme inspired by{" "}
           <a
             className="font-medium text-fd-primary underline"
