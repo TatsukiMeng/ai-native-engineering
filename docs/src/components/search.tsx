@@ -1,6 +1,5 @@
 "use client";
 import { create } from "@orama/orama";
-import { createTokenizer } from "@orama/tokenizers/mandarin";
 import { useDocsSearch } from "fumadocs-core/search/client";
 import {
   SearchDialog,
@@ -18,7 +17,6 @@ import { useI18n } from "fumadocs-ui/contexts/i18n";
 function initOrama() {
   return create({
     schema: { _: "string" },
-    tokenizer: createTokenizer(),
   });
 }
 
