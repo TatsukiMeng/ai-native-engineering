@@ -33,7 +33,7 @@ body:
     id: suggestion
     attributes:
       label: 修正建议
-      description: 建议修正为什么内容？
+      description: 建议修正为哪些内容？
     validations:
       required: false
 
