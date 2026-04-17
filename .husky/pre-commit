@@ -2,35 +2,29 @@
 
 echo "Checking and formatting staged files..."
 
-# Get staged files in docs directory
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep 'docs/' | sed 's/^docs\///')
 
 if [ -z "$STAGED_FILES" ]; then
-  # No docs files to check
   exit 0
 fi
 
-# Go to the docs directory where biome is installed
 cd docs || exit 1
 
-# Biome currently ignores content/docs/*.mdx; filter them out to avoid hard failure
-BIOME_FILES=$(echo "$STAGED_FILES" | tr ' ' '\n' | grep -v '^content/docs/' | grep -v '^bun\.lock$' | grep -v '^pnpm-lock\.yaml$' | grep -v '^package-lock\.json$' | tr '\n' ' ')
+OXFMT_FILES=$(echo "$STAGED_FILES" | tr ' ' '\n' | grep -v '^bun\.lock$' | grep -v '^pnpm-lock\.yaml$' | grep -v '^package-lock\.json$' | tr '\n' ' ')
 RESULT=0
-if [ -n "$BIOME_FILES" ]; then
-  bun biome check --write $BIOME_FILES
+if [ -n "$OXFMT_FILES" ]; then
+  bunx oxfmt -c .oxfmtrc.json --write $OXFMT_FILES
   RESULT=$?
 fi
 
-# Check exit code
 if [ $RESULT -ne 0 ]; then
-  echo "Biome check failed. Please fix the errors before committing."
+  echo "oxfmt formatting failed. Please fix the errors before committing."
   exit 1
 fi
 
-# Auto-stage auto-fixed files back into git
 for file in $STAGED_FILES; do
   git add "$file"
 done
 
-echo "Biome check passed!"
+echo "All checks passed!"
 exit 0
