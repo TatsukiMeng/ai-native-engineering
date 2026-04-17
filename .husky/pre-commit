@@ -10,15 +10,15 @@ fi
 
 cd docs || exit 1
 
-OXFMT_FILES=$(echo "$STAGED_FILES" | tr ' ' '\n' | grep -v '^content/docs/' | grep -v '^bun\.lock$' | grep -v '^pnpm-lock\.yaml$' | grep -v '^package-lock\.json$' | tr '\n' ' ')
+OXFMT_FILES=$(echo "$STAGED_FILES" | tr ' ' '\n' | grep -v '^bun\.lock$' | grep -v '^pnpm-lock\.yaml$' | grep -v '^package-lock\.json$' | tr '\n' ' ')
 RESULT=0
 if [ -n "$OXFMT_FILES" ]; then
-  bun oxfmt -c .oxfmtrc.json --write $OXFMT_FILES
+  bunx oxfmt -c .oxfmtrc.json --write $OXFMT_FILES
   RESULT=$?
 fi
 
 if [ $RESULT -ne 0 ]; then
-  echo "oxfmt check failed. Please fix the errors before committing."
+  echo "oxfmt formatting failed. Please fix the errors before committing."
   exit 1
 fi
 
@@ -26,5 +26,5 @@ for file in $STAGED_FILES; do
   git add "$file"
 done
 
-echo "oxfmt check passed!"
+echo "All checks passed!"
 exit 0
