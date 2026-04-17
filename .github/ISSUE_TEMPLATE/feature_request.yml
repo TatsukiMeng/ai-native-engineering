@@ -1,6 +1,6 @@
 name: 功能 / 内容请求
 description: 新功能、新章节或辅助性改动
-labels: ["feat"]
+labels: ["needs-triage"]
 body:
   - type: dropdown
     id: type
