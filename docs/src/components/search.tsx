@@ -13,6 +13,7 @@ import {
   type SharedProps,
 } from "fumadocs-ui/components/dialog/search";
 import { useI18n } from "fumadocs-ui/contexts/i18n";
+import { withDocsBasePath } from "@/lib/docs-base-path";
 
 function initOrama() {
   return create({
@@ -28,7 +29,7 @@ export default function DefaultSearchDialog(props: SharedProps) {
     type: "static",
     initOrama,
     locale,
-    from: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/search`,
+    from: withDocsBasePath("/api/search"),
   });
 
   return (
