@@ -23,6 +23,7 @@
     "@fumadocs/base-ui": "^16.7.7",
     "@giscus/react": "^3.1.0",
     "@orama/orama": "^3.1.18",
+    "@orama/tokenizers": "^3.1.18",
     "fumadocs-core": "^16.7.7",
     "fumadocs-mdx": "^14.2.11",
     "fumadocs-ui": "^16.7.7",
