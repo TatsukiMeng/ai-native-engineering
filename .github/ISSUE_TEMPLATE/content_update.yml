@@ -1,0 +1,47 @@
+name: 文档内容修正
+description: 修正书籍内容中的错误或不准确之处
+labels: ["docs"]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: 改动类型
+      options:
+        - docs
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    id: chapter
+    attributes:
+      label: 涉及章节
+      description: 指出具体章节路径
+      placeholder: "例：Part 1 · 01-paradigm-shift"
+    validations:
+      required: false
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 当前内容问题
+      description: 当前内容有什么错误或不准确之处？
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 修正建议
+      description: 建议修正为哪些内容？
+    validations:
+      required: false
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: 参考来源
+      description: 外部论断需附权威来源（参见 AGENTS.md 校验规范）
+      placeholder: "例：https://官方文档链接 或 https://arxiv.org/abs/xxxx"
+    validations:
+      required: false

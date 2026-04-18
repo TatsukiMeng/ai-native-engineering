@@ -1,0 +1,62 @@
+name: Bug 报告
+description: 修复内容错误、代码 Bug 或排版问题
+labels: ["fix"]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: 改动类型
+      options:
+        - fix
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 出了什么问题？当前表现是什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 如果是代码 Bug，请给出复现路径
+    validations:
+      required: false
+
+  - type: textarea
+    id: root-cause
+    attributes:
+      label: 根因分析
+      description: 如果已知原因，请简要说明
+    validations:
+      required: false
+
+  - type: textarea
+    id: fix
+    attributes:
+      label: 最小修复方案
+      description: 建议的修复方式（边界收束，最小改动）
+    validations:
+      required: false
+
+  - type: textarea
+    id: files
+    attributes:
+      label: 涉及文件
+      description: 列出需要改动的文件或章节路径
+      placeholder: "例：docs/content/docs/01-breakthrough/01-paradigm-shift.mdx"
+    validations:
+      required: false
+
+  - type: textarea
+    id: verify
+    attributes:
+      label: 验证方式
+      description: 如何确认修复生效？
+    validations:
+      required: false

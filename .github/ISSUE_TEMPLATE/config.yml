@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/TatsukiMeng/ai-native-engineering/discussions
+    about: 通用讨论与提问请前往 Discussions
+  - name: CONTRIBUTING.md
+    url: https://github.com/TatsukiMeng/ai-native-engineering/blob/main/CONTRIBUTING.md
+    about: 提交前请阅读贡献规范
+  - name: AGENTS.md
+    url: https://github.com/TatsukiMeng/ai-native-engineering/blob/main/AGENTS.md
+    about: AI 协作规范与写作风格指南

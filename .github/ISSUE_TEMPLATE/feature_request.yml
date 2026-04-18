@@ -1,0 +1,48 @@
+name: 功能 / 内容请求
+description: 新功能、新章节或辅助性改动
+labels: ["needs-triage"]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: 改动类型
+      options:
+        - feat
+        - docs
+        - chore
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 动机与背景
+      description: 为什么要做这个改动？解决了什么痛点？
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 最小实现方案
+      description: 建议的实现方式（边界收束，最小改动）
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 影响范围
+      description: 哪些文件或章节会受影响？
+      placeholder: "例：docs/content/docs/02-foundation/ 目录下新增文章"
+    validations:
+      required: false
+
+  - type: textarea
+    id: verify
+    attributes:
+      label: 验证方式
+      description: 如何确认改动达到预期？
+    validations:
+      required: false
